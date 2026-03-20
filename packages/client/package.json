@@ -1,0 +1,38 @@
+{
+  "name": "@void-snippets/client",
+  "version": "0.2.1",
+  "description": "Framework-agnostic HTTP resource service for TypeScript projects",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "keywords": [
+    "axios",
+    "typescript",
+    "api",
+    "void-snippets",
+    "resource"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@void-snippets/core": "workspace:*",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
+  }
+}

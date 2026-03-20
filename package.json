@@ -1,0 +1,18 @@
+{
+  "name": "void-snippets-monorepo",
+  "private": true,
+  "version": "0.1.1",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "build:core": "pnpm --filter @void-snippets/core run build",
+    "build:client": "pnpm --filter @void-snippets/client run build",
+    "build:react": "pnpm --filter @void-snippets/react run build",
+    "dev": "pnpm -r run dev",
+    "publish:all": "pnpm -r publish --access public --no-git-checks",
+    "version:bump": "pnpm -r exec npm version"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsup": "^8.0.0"
+  }
+}
