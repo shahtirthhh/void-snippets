@@ -1,6 +1,6 @@
 {
   "name": "@void-snippets/react",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "TanStack Query resource hooks factory for React",
   "homepage": "https://github.com/shahtirthhh/void-snippets",
   "repository": {
@@ -21,21 +21,12 @@
       "default": "./dist/index.mjs"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch"
   },
-  "keywords": [
-    "react",
-    "tanstack-query",
-    "react-query",
-    "hooks",
-    "api",
-    "void-snippets"
-  ],
+  "keywords": ["react", "tanstack-query", "react-query", "hooks", "api", "void-snippets"],
   "license": "MIT",
   "peerDependencies": {
     "react": ">=17.0.0",

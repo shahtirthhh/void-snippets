@@ -1,6 +1,6 @@
 {
   "name": "@void-snippets/client",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Framework-agnostic HTTP resource service for TypeScript projects",
   "homepage": "https://github.com/shahtirthhh/void-snippets",
   "repository": {
@@ -21,20 +21,12 @@
       "default": "./dist/index.mjs"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch"
   },
-  "keywords": [
-    "axios",
-    "typescript",
-    "api",
-    "void-snippets",
-    "resource"
-  ],
+  "keywords": ["axios", "typescript", "api", "void-snippets", "resource"],
   "license": "MIT",
   "dependencies": {
     "@void-snippets/core": "workspace:*",

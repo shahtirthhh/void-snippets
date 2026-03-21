@@ -1,6 +1,6 @@
 {
   "name": "@void-snippets/core",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Core types and utilities for void-snippets packages",
   "homepage": "https://github.com/shahtirthhh/void-snippets",
   "repository": {
@@ -21,18 +21,12 @@
       "default": "./dist/index.mjs"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch"
   },
-  "keywords": [
-    "typescript",
-    "void-snippets",
-    "types"
-  ],
+  "keywords": ["typescript", "void-snippets", "types"],
   "license": "MIT",
   "devDependencies": {
     "tsup": "^8.0.0",
