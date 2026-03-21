@@ -2,6 +2,15 @@
   "name": "@void-snippets/client",
   "version": "0.2.1",
   "description": "Framework-agnostic HTTP resource service for TypeScript projects",
+  "homepage": "https://github.com/shahtirthhh/void-snippets",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shahtirthhh/void-snippets.git",
+    "directory": "packages/client"
+  },
+  "bugs": {
+    "url": "https://github.com/shahtirthhh/void-snippets/issues"
+  },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

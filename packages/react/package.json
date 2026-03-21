@@ -2,6 +2,15 @@
   "name": "@void-snippets/react",
   "version": "0.2.1",
   "description": "TanStack Query resource hooks factory for React",
+  "homepage": "https://github.com/shahtirthhh/void-snippets",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shahtirthhh/void-snippets.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/shahtirthhh/void-snippets/issues"
+  },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

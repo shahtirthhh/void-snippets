@@ -2,6 +2,15 @@
   "name": "@void-snippets/core",
   "version": "0.2.1",
   "description": "Core types and utilities for void-snippets packages",
+  "homepage": "https://github.com/shahtirthhh/void-snippets",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shahtirthhh/void-snippets.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/shahtirthhh/void-snippets/issues"
+  },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
