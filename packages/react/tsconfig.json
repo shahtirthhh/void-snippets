@@ -8,8 +8,7 @@
     "declaration": true,
     "declarationMap": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "outDir": "dist"
+    "skipLibCheck": true
   },
   "include": ["src"]
 }

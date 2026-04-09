@@ -46,8 +46,8 @@ importers:
         specifier: ^5.0.0
         version: 5.91.2(react@18.3.1)
       '@void-snippets/client':
-        specifier: workspace:*
-        version: link:../client
+        specifier: '>=0.1.0'
+        version: 0.2.2
       '@void-snippets/core':
         specifier: workspace:*
         version: link:../core
@@ -390,6 +390,12 @@ packages:
 
   '@types/react@18.3.28':
     resolution: {integrity: sha512-z9VXpC7MWrhfWipitjNdgCauoMLRdIILQsAEV+ZesIzBq/oUlxk0m3ApZuMFCXdnS4U7KrI+l3WRUEGQ8K1QKw==}
+
+  '@void-snippets/client@0.2.2':
+    resolution: {integrity: sha512-s2drNn3RAZ7rp4uKjeQhwuwBVkhnurdr6vSjTMyu96zTKinjGx+BN7psPw3C057fBSG8J7MvTCNgWBB6+t0KEg==}
+
+  '@void-snippets/core@0.2.2':
+    resolution: {integrity: sha512-f48oBlleasHfWC/j7pW9fkwt0Eoa877mrck/ENF8tNeORyJXqyTpr+oDpYybx0fE8ODBLeFeQfY4iae5ZeRxYQ==}
 
   acorn@8.16.0:
     resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
@@ -882,6 +888,15 @@ snapshots:
     dependencies:
       '@types/prop-types': 15.7.15
       csstype: 3.2.3
+
+  '@void-snippets/client@0.2.2':
+    dependencies:
+      '@void-snippets/core': 0.2.2
+      axios: 1.13.6
+    transitivePeerDependencies:
+      - debug
+
+  '@void-snippets/core@0.2.2': {}
 
   acorn@8.16.0: {}
 

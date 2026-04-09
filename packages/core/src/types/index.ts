@@ -2,14 +2,14 @@
 // PAGINATION
 // ============================================================================
 
-export interface TPagination {
+export interface VSPagination {
   page: number;
   limit: number;
   totalPages: number;
   totalDocuments: number;
 }
 
-export interface TQueryParams {
+export interface VSQueryParams {
   page?: number;
   limit?: number;
   [key: string]: unknown;
@@ -21,7 +21,7 @@ export interface TQueryParams {
 // If your API returns a different shape, provide custom adapters.
 // ============================================================================
 
-export interface TDefaultPaginatedData<T> {
+export interface VSDefaultPaginatedData<T> {
   items: T[];
   page: number;
   limit: number;
@@ -29,46 +29,46 @@ export interface TDefaultPaginatedData<T> {
   totalDocuments: number;
 }
 
-export interface TDefaultPaginatedResponse<T> {
-  data: TDefaultPaginatedData<T>;
+export interface VSDefaultPaginatedResponse<T> {
+  data: VSDefaultPaginatedData<T>;
 }
 
-export interface TDefaultSingleResponse<T> {
+export interface VSDefaultSingleResponse<T> {
   data: T;
 }
 
 // ============================================================================
 // ADAPTER INTERFACES
 // Adapters decouple the library from any specific API response shape.
-// Pass them to createResourceHooks() if your API shape differs from the default.
+// Pass them to createResourceHooks() if your API shape differs from defaults.
 //
-// Example:
-//   const adapters: ResourceAdapters<MyListRes, User, MySingleRes, UserDetail> = {
+// @example
+//   const adapters: VSAdapters<MyListRes, User, MySingleRes, UserDetail> = {
 //     fromList: (raw) => ({ items: raw.results, pagination: { ... } }),
 //     fromSingle: (raw) => raw.payload,
 //   };
 // ============================================================================
 
-export interface ResourceListResult<TBase> {
+export interface VSListResult<TBase> {
   items: TBase[];
-  pagination: TPagination;
+  pagination: VSPagination;
 }
 
-export interface ResourceAdapters<TListRaw, TBase, TSingleRaw, TDetail> {
-  fromList: (raw: TListRaw) => ResourceListResult<TBase>;
+export interface VSAdapters<TListRaw, TBase, TSingleRaw, TDetail> {
+  fromList: (raw: TListRaw) => VSListResult<TBase>;
   fromSingle: (raw: TSingleRaw) => TDetail;
 }
 
 // ============================================================================
 // DEFAULT ADAPTERS FACTORY
-// Works out-of-the-box if your API matches TDefaultPaginatedResponse /
-// TDefaultSingleResponse. Zero configuration needed in that case.
+// Works out-of-the-box if your API matches VSDefaultPaginatedResponse /
+// VSDefaultSingleResponse. Zero config needed in that case.
 // ============================================================================
 
-export function createDefaultAdapters<TBase, TDetail>(): ResourceAdapters<
-  TDefaultPaginatedResponse<TBase>,
+export function createDefaultAdapters<TBase, TDetail>(): VSAdapters<
+  VSDefaultPaginatedResponse<TBase>,
   TBase,
-  TDefaultSingleResponse<TDetail>,
+  VSDefaultSingleResponse<TDetail>,
   TDetail
 > {
   return {

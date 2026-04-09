@@ -1,6 +1,6 @@
 # @void-snippets/core
 
-Core types and utilities shared across the `@void-snippets` packages. Use this directly if you need the types or branded ID utilities in your own TypeScript project.
+Core types, utilities, and helpers shared across the `@void-snippets` packages. Use this directly if you need the types, branded ID utilities, or `catchError` in your own TypeScript project.
 
 ## Installation
 
@@ -15,11 +15,11 @@ npm install @void-snippets/core
 Prevent accidental mixing of structurally identical but semantically different IDs at compile time.
 
 ```ts
-import type { Id } from '@void-snippets/core';
+import type { VSId } from '@void-snippets/core';
 import { stringToId } from '@void-snippets/core';
 
-type ContactId = Id<string, 'Contact'>;
-type UserId    = Id<string, 'User'>;
+type ContactId = VSId<string, 'Contact'>;
+type UserId    = VSId<string, 'User'>;
 
 // Convert a raw string (e.g. from a URL param) to a branded ID
 const id = stringToId<ContactId>('abc-123'); // ContactId ✅
@@ -32,41 +32,54 @@ userId = contactId; // ✅ Error — brands don't match
 
 ---
 
-## API Response Types
+## catchError
 
-Default response shapes the library works with out-of-the-box.
+Go-style error handling for TypeScript. Wraps any Promise and returns a `[error, null] | [null, data]` tuple — no try/catch needed at the call site.
+
+```ts
+import { catchError } from '@void-snippets/core';
+
+const [err, data] = await catchError(fetchUser(id));
+if (err) {
+  console.error(err.message);
+  return;
+}
+console.log(data.name); // data is typed correctly here
+```
+
+---
+
+## API Response Types
 
 ```ts
 import type {
-  TPagination,
-  TQueryParams,
-  TDefaultPaginatedResponse,
-  TDefaultSingleResponse,
+  VSPagination,
+  VSQueryParams,
+  VSDefaultPaginatedResponse,
+  VSDefaultSingleResponse,
 } from '@void-snippets/core';
 ```
 
 | Type | Description |
 |---|---|
-| `TPagination` | `{ page, limit, totalPages, totalDocuments }` |
-| `TQueryParams` | `{ page?, limit?, ...rest }` |
-| `TDefaultPaginatedResponse<T>` | `{ data: { items: T[], page, limit, totalPages, totalDocuments } }` |
-| `TDefaultSingleResponse<T>` | `{ data: T }` |
+| `VSPagination` | `{ page, limit, totalPages, totalDocuments }` |
+| `VSQueryParams` | `{ page?, limit?, ...rest }` |
+| `VSDefaultPaginatedResponse<T>` | `{ data: { items: T[], page, limit, totalPages, totalDocuments } }` |
+| `VSDefaultSingleResponse<T>` | `{ data: T }` |
 
 ---
 
 ## Adapter Types
 
-Use these if you are building a custom integration with a non-standard API shape.
-
 ```ts
-import type { ResourceAdapters, ResourceListResult } from '@void-snippets/core';
+import type { VSAdapters } from '@void-snippets/core';
 import { createDefaultAdapters } from '@void-snippets/core';
 
-// createDefaultAdapters() returns adapters for the default response shapes above
+// Default adapters — works if your API matches the shapes above
 const adapters = createDefaultAdapters<User, UserDetail>();
 
-// Or define your own for a custom API shape
-const myAdapters: ResourceAdapters<MyListResponse, User, MySingleResponse, UserDetail> = {
+// Custom adapters — for any other API shape
+const myAdapters: VSAdapters<MyListResponse, User, MySingleResponse, UserDetail> = {
   fromList: (raw) => ({
     items: raw.results,
     pagination: {
@@ -86,9 +99,9 @@ const myAdapters: ResourceAdapters<MyListResponse, User, MySingleResponse, UserD
 
 | Package | Description |
 |---|---|
-| `@void-snippets/core` | This package — types and utilities |
+| `@void-snippets/core` | This package |
 | `@void-snippets/client` | Framework-agnostic CRUD resource service (axios) |
-| `@void-snippets/react` | TanStack Query v5 hooks factory for React |
+| `@void-snippets/react` | TanStack Query v5 hooks + general-purpose React hooks |
 
 ## License
 

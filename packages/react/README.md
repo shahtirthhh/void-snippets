@@ -1,6 +1,6 @@
 # @void-snippets/react
 
-TanStack Query v5 hook factory for React. Generates a fully-typed set of hooks (`useList`, `useGet`, `useMutations`, `useInfinite`) from a `ResourceService` instance — with zero manual type annotations required.
+TanStack Query v5 resource hooks factory + general-purpose React hooks. All fully typed, zero boilerplate.
 
 ## Installation
 
@@ -10,119 +10,87 @@ npm install @void-snippets/react @void-snippets/client @tanstack/react-query axi
 
 ---
 
-## Quick Start
+## Setup
 
-### 1. Configure axios once at your app entry point
+### Configure axios once
 
 ```ts
-// src/main.ts
 import axios from 'axios';
 import { configure } from '@void-snippets/client';
-
-const axiosInstance = axios.create({ baseURL: 'https://api.example.com' });
-configure(axiosInstance);
+configure(axios.create({ baseURL: 'https://api.example.com' }));
 ```
 
-### 2. Set up TanStack Query
+### Wrap your app with QueryClientProvider
 
 ```tsx
-// src/main.tsx
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
 const queryClient = new QueryClient();
-
 function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <YourApp />
-    </QueryClientProvider>
-  );
-}
-```
-
-### 3. Define a resource service
-
-```ts
-// contacts/contacts.api.ts
-import { ResourceService } from '@void-snippets/client';
-import type { Contact } from './contacts.types';
-
-export class ContactsApiService extends ResourceService<
-  Contact.Id,
-  Contact.Base,
-  Contact.WithCreatedBy,
-  Contact.Apis.CreatePayload,
-  Contact.Apis.UpdatePayload
-> {
-  constructor() {
-    super('/contacts');
-  }
-}
-
-export const ContactsApis = new ContactsApiService();
-```
-
-### 4. Create hooks
-
-```ts
-// contacts/contacts.hooks.ts
-import { createResourceHooks } from '@void-snippets/react';
-import { ContactsApis } from './contacts.api';
-
-// All types are inferred from ContactsApis — no generics needed
-export const contactHooks = createResourceHooks('contacts', ContactsApis);
-```
-
-### 5. Use in components
-
-```tsx
-// List with pagination
-function ContactsList() {
-  const { contacts, isContactsLoading, pagination } = contactHooks.useList({
-    page: 1,
-    limit: 20,
-  });
-
-  if (isContactsLoading) return <Spinner />;
-  return contacts.map(c => <ContactCard key={c._id} contact={c} />);
-}
-
-// Single item
-function ContactDetail({ id }: { id: Contact.Id }) {
-  const { data, isLoading } = contactHooks.useGet(id);
-  // data is typed as Contact.WithCreatedBy ✅
-}
-
-// Mutations (auto-invalidate the list on success)
-function CreateContactForm() {
-  const { create, update, delete: remove } = contactHooks.useMutations();
-
-  return (
-    <button onClick={() => create.mutate({ name: 'John' })}>
-      Create
-    </button>
-  );
-}
-
-// Infinite scroll
-function InfiniteContactsList() {
-  const { data, fetchNextPage, hasNextPage } = contactHooks.useInfinite({ limit: 20 });
-  const all = data?.pages.flatMap(p => p.items) ?? [];
+  return <QueryClientProvider client={queryClient}><YourApp /></QueryClientProvider>;
 }
 ```
 
 ---
 
-## Custom API Response Shapes
+## Resource Hooks — `createResourceHooks`
 
-By default the library expects this shape from your API:
+Define a service once, get all hooks free — fully typed, no generics needed.
 
-```json
-// List:   { "data": { "items": [], "page": 1, "limit": 10, "totalPages": 5, "totalDocuments": 42 } }
-// Single: { "data": { "_id": "...", "name": "..." } }
+```ts
+// contacts.api.ts
+export class ContactsApiService extends ResourceService<
+  Contact.Id, Contact.Base, Contact.WithCreatedBy,
+  Contact.Apis.CreatePayload, Contact.Apis.UpdatePayload
+> {
+  constructor() { super('/contacts'); }
+}
+export const ContactsApis = new ContactsApiService();
+
+// contacts.hooks.ts
+export const contactHooks = createResourceHooks('contacts', ContactsApis);
 ```
 
-If your API looks different, pass adapters as a third argument:
+### `useList(params?)`
+
+```tsx
+const { list, isLoading, pagination, error, invalidate } =
+  contactHooks.useList({ page: 1, limit: 20 });
+// list is typed as Contact.Base[] ✅
+```
+
+| Key | Type |
+|---|---|
+| `list` | `TBase[]` |
+| `pagination` | `VSPagination` |
+| `isLoading` | `boolean` |
+| `error` | `Error \| null` |
+| `invalidate` | `() => void` |
+
+### `useGet(id, staleTime?)`
+
+```tsx
+const { item, isLoading, error, refetch } = contactHooks.useGet(id);
+// item is typed as Contact.WithCreatedBy ✅
+```
+
+### `useMutations()`
+
+```tsx
+const { create, update, remove } = contactHooks.useMutations();
+
+create.mutate({ name: 'John' });
+update.mutate({ _id: id, payload: { name: 'Jane' } });
+remove.mutate(id);
+```
+
+### `useInfinite(params?)`
+
+```tsx
+const { data, fetchNextPage, hasNextPage } = contactHooks.useInfinite({ limit: 20 });
+const all = data?.pages.flatMap(p => p.items) ?? [];
+```
+
+### Custom API shapes
 
 ```ts
 export const contactHooks = createResourceHooks('contacts', ContactsApis, {
@@ -143,25 +111,71 @@ export const contactHooks = createResourceHooks('contacts', ContactsApis, {
 
 ---
 
-## Hook Reference
+## General-Purpose Hooks
 
-### `useList(params?)`
-| Returned key | Type | Description |
-|---|---|---|
-| `[prefix]` | `TBase[]` | e.g. `contacts` for prefix `"contacts"` |
-| `pagination` | `TPagination` | `{ page, limit, totalPages, totalDocuments }` |
-| `is[Prefix]Loading` | `boolean` | e.g. `isContactsLoading` |
-| `[prefix]Error` | `Error \| null` | e.g. `contactsError` |
-| `invalidate[Prefix]` | `() => void` | e.g. `invalidateContacts` |
+### `useAlertMessage(autoHideDuration?)`
 
-### `useGet(id, staleTime?)`
-Returns `{ data, isLoading, error, refetch }`. Skips the query if `id` is empty.
+```tsx
+const { alert, showAlert, hideAlert } = useAlertMessage(3000);
 
-### `useMutations()`
-Returns `{ create, update, delete }` — each is a TanStack `UseMutationResult`. All auto-invalidate the list cache on success.
+showAlert('Saved!', 'success');
+showAlert('Something went wrong', 'error');
+showAlert(<b>Custom JSX</b>, 'info');
+// alert.isVisible, alert.message, alert.type
+```
 
-### `useInfinite(params?)`
-Returns the standard TanStack `useInfiniteQuery` result with `items` and `pagination` per page.
+Variants: `"success" | "info" | "error"`
+
+---
+
+### `useAsyncState<T>(initialData?)`
+
+```tsx
+const { data, isLoading, isError, execute } = useAsyncState<User>();
+
+const [err, user] = await execute(() => fetchUser(id), {
+  onSuccess: (u) => showAlert(`Welcome ${u.name}`, 'success'),
+  onError: (e) => showAlert(e.message, 'error'),
+});
+```
+
+Status values: `"idle" | "pending" | "success" | "error"`
+
+---
+
+### `useCallTimer(startedAt?)`
+
+```tsx
+const duration = useCallTimer(call.startedAt); // "02:45"
+const duration = useCallTimer(null);           // "00:00"
+```
+
+---
+
+### `useModal<T>()`
+
+```tsx
+const modal = useModal<Contact.Base>();
+
+modal.openCreateModal();      // data → null
+modal.openEditModal(contact); // data → contact
+
+if (modal.data) { /* edit mode */ } else { /* create mode */ }
+```
+
+---
+
+### `usePagination(initialPage?, initialLimit?)`
+
+```tsx
+const { queryParams, onPaginationChange } = usePagination(1, 20);
+
+// Wire directly to useList
+const { list } = contactHooks.useList(queryParams);
+
+// Wire to your pagination UI
+<Pagination onChange={onPaginationChange} total={pagination.totalDocuments} />
+```
 
 ---
 

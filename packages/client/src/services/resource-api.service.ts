@@ -1,7 +1,7 @@
 import type {
-  TQueryParams,
-  TDefaultPaginatedResponse,
-  TDefaultSingleResponse,
+  VSQueryParams,
+  VSDefaultPaginatedResponse,
+  VSDefaultSingleResponse,
 } from "@void-snippets/core";
 import { handleApiError } from "../utils/handle-api-error";
 import { BaseApiService } from "./base-api.service";
@@ -9,18 +9,17 @@ import { BaseApiService } from "./base-api.service";
 /**
  * Generic CRUD resource service. Extend this class for each API resource.
  *
- * @typeParam TId           - The type of the resource's identifier (e.g., string)
- * @typeParam TBase         - The base entity type returned in list responses
- * @typeParam TDetail       - The detailed entity type returned in single-item responses (defaults to TBase)
- * @typeParam TCreate       - The payload type for create operations (defaults to Partial<TBase>)
- * @typeParam TUpdate       - The payload type for update operations (defaults to Partial<TBase>)
- * @typeParam TListRaw      - Raw API list response shape (defaults to TDefaultPaginatedResponse<TBase>)
- * @typeParam TSingleRaw    - Raw API single-item response shape (defaults to TDefaultSingleResponse<TDetail>)
+ * @typeParam TId        - The type of the resource's identifier (e.g., string)
+ * @typeParam TBase      - The base entity type returned in list responses
+ * @typeParam TDetail    - The detailed entity type returned in single-item responses (defaults to TBase)
+ * @typeParam TCreate    - The payload type for create operations (defaults to Partial<TBase>)
+ * @typeParam TUpdate    - The payload type for update operations (defaults to Partial<TBase>)
+ * @typeParam TListRaw   - Raw API list response shape (defaults to VSDefaultPaginatedResponse<TBase>)
+ * @typeParam TSingleRaw - Raw API single-item response shape (defaults to VSDefaultSingleResponse<TDetail>)
  *
  * @example
- * // contacts/contacts.api.ts
  * import { ResourceService } from '@void-snippets/client';
- * import { Contact } from './contacts.types';
+ * import type { Contact } from './contacts.types';
  *
  * export class ContactsApiService extends ResourceService<
  *   Contact.Id,
@@ -42,8 +41,8 @@ export class ResourceService<
   TDetail = TBase,
   TCreate = Partial<TBase>,
   TUpdate = Partial<TBase>,
-  TListRaw = TDefaultPaginatedResponse<TBase>,
-  TSingleRaw = TDefaultSingleResponse<TDetail>,
+  TListRaw = VSDefaultPaginatedResponse<TBase>,
+  TSingleRaw = VSDefaultSingleResponse<TDetail>,
 > extends BaseApiService {
   declare readonly __types: {
     id: TId;
@@ -54,11 +53,12 @@ export class ResourceService<
     listRaw: TListRaw;
     singleRaw: TSingleRaw;
   };
+
   constructor(endpoint: string) {
     super(endpoint);
   }
 
-  async list(params?: TQueryParams): Promise<TListRaw> {
+  async list(params?: VSQueryParams): Promise<TListRaw> {
     try {
       const { data } = await this.http.get<TListRaw>(this.getFullUrl(""), {
         params,
@@ -72,7 +72,7 @@ export class ResourceService<
   async get(id: TId): Promise<TSingleRaw> {
     try {
       const { data } = await this.http.get<TSingleRaw>(
-        `${this.getFullUrl("")}/${String(id)}`,
+        `${this.getFullUrl("")}/${String(id)}`
       );
       return data;
     } catch (error) {
@@ -84,7 +84,7 @@ export class ResourceService<
     try {
       const { data } = await this.http.post<TSingleRaw>(
         this.getFullUrl(""),
-        payload,
+        payload
       );
       return data;
     } catch (error) {
@@ -96,7 +96,7 @@ export class ResourceService<
     try {
       const { data } = await this.http.patch<TSingleRaw>(
         `${this.getFullUrl("")}/${String(id)}`,
-        payload,
+        payload
       );
       return data;
     } catch (error) {
@@ -107,7 +107,7 @@ export class ResourceService<
   async delete(id: TId): Promise<TSingleRaw> {
     try {
       const { data } = await this.http.delete<TSingleRaw>(
-        `${this.getFullUrl("")}/${String(id)}`,
+        `${this.getFullUrl("")}/${String(id)}`
       );
       return data;
     } catch (error) {

@@ -1,6 +1,6 @@
 {
   "name": "@void-snippets/client",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Framework-agnostic HTTP resource service for TypeScript projects",
   "homepage": "https://github.com/shahtirthhh/void-snippets",
   "repository": {

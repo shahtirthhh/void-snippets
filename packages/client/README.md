@@ -24,13 +24,12 @@ const axiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach interceptors, auth tokens, etc.
 axiosInstance.interceptors.request.use((config) => {
   config.headers.Authorization = `Bearer ${getToken()}`;
   return config;
 });
 
-configure(axiosInstance); // registers it globally — call this once
+configure(axiosInstance); // registers globally — call this once
 ```
 
 ### 2. Define a resource service
@@ -58,20 +57,11 @@ export const ContactsApis = new ContactsApiService();
 ### 3. Use it anywhere
 
 ```ts
-// list (paginated)
-const response = await ContactsApis.list({ page: 1, limit: 20 });
-
-// get single
-const response = await ContactsApis.get(id);
-
-// create
-const response = await ContactsApis.create({ name: 'John' });
-
-// update
-const response = await ContactsApis.update(id, { name: 'Jane' });
-
-// delete
-const response = await ContactsApis.delete(id);
+const list   = await ContactsApis.list({ page: 1, limit: 20 });
+const item   = await ContactsApis.get(id);
+const created = await ContactsApis.create({ name: 'John' });
+const updated = await ContactsApis.update(id, { name: 'Jane' });
+const deleted = await ContactsApis.delete(id);
 ```
 
 ---
@@ -87,10 +77,10 @@ const response = await ContactsApis.delete(id);
 | `TDetail` | `TBase` | Single item shape (detail view) |
 | `TCreate` | `Partial<TBase>` | Create payload |
 | `TUpdate` | `Partial<TBase>` | Update payload |
-| `TListRaw` | `TDefaultPaginatedResponse<TBase>` | Raw list response from API |
-| `TSingleRaw` | `TDefaultSingleResponse<TDetail>` | Raw single-item response from API |
+| `TListRaw` | `VoidSnippetDefaultPaginatedResponse<TBase>` | Raw list response from API |
+| `TSingleRaw` | `VoidSnippetDefaultSingleResponse<TDetail>` | Raw single-item response from API |
 
-The last two parameters are only needed if your API returns a non-standard response shape — see `@void-snippets/react` for how adapters work.
+The last two are only needed if your API returns a non-standard response shape — see `@void-snippets/react` for how adapters work.
 
 ---
 
@@ -100,7 +90,7 @@ The last two parameters are only needed if your API returns a non-standard respo
 |---|---|
 | `@void-snippets/core` | Shared types and utilities |
 | `@void-snippets/client` | This package |
-| `@void-snippets/react` | TanStack Query v5 hooks factory for React |
+| `@void-snippets/react` | TanStack Query v5 hooks + general-purpose React hooks |
 
 ## License
 
