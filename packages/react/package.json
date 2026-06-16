@@ -1,7 +1,7 @@
 {
   "name": "@void-snippets/react",
-  "version": "0.5.0",
-  "description": "TanStack Query resource hooks factory, Socket.IO hooks factory, and general-purpose React hooks",
+  "version": "0.6.0",
+  "description": "TanStack Query resource hooks factory, Socket.IO hooks factory, type-safe routing contract, and general-purpose React hooks",
   "homepage": "https://github.com/shahtirthhh/void-snippets",
   "repository": {
     "type": "git",
@@ -34,23 +34,32 @@
     "api",
     "socket.io",
     "websocket",
+    "routing",
+    "react-router",
+    "type-safe",
     "void-snippets",
+    "createResourceHooks",
+    "createSocketHooks",
+    "createRouteContract",
+    "useTypedSearchParams",
     "useModal",
     "usePagination",
     "useAsyncState",
     "useAlertMessage",
-    "useCallTimer",
-    "createResourceHooks",
-    "createSocketHooks"
+    "useCallTimer"
   ],
   "license": "MIT",
   "peerDependencies": {
     "react": ">=17.0.0",
     "@void-snippets/client": ">=0.1.0",
-    "socket.io-client": ">=4.6.0"
+    "socket.io-client": ">=4.6.0",
+    "react-router": ">=7.0.0"
   },
   "peerDependenciesMeta": {
     "socket.io-client": {
+      "optional": true
+    },
+    "react-router": {
       "optional": true
     }
   },
@@ -61,6 +70,7 @@
   "devDependencies": {
     "@types/react": "^18.0.0",
     "react": "^18.0.0",
+    "react-router": "^7.0.0",
     "socket.io-client": "^4.7.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0"

@@ -12,6 +12,18 @@ export type {
 export { createSocketHooks } from "./socket/createSocketHooks";
 export type { VSSocketConnectionReturn } from "./socket/createSocketHooks";
 
+// Route contract factory
+export {
+  createRouteContract,
+  defineRoute,
+  useTypedSearchParams,
+} from "./routing/createRouteContract";
+export type {
+  RouteMetadata,
+  RouteDefinition,
+  ProcessedRoute,
+} from "./routing/createRouteContract";
+
 // General-purpose React hooks
 export { useAlertMessage } from "./hooks/useAlertMessage";
 export type { VSAlertVariant, VSAlertState } from "./hooks/useAlertMessage";

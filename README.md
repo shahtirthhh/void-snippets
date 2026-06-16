@@ -23,7 +23,6 @@
   - [Utilities](#utilities)
 - [Package: `@void-snippets/client`](#package-void-snippetsclient)
   - [Configuration](#configuration)
-  - [BaseApiService](#baseapiservice)
   - [ResourceService](#resourceservice)
   - [Error Handling](#error-handling)
 - [Package: `@void-snippets/react`](#package-void-snippetsreact)
@@ -39,6 +38,9 @@
     - [useSocketEmit](#usesocketemit)
     - [useSocketListener](#usesocketlistenerevent-handler-options)
     - [useSocketConnection](#usesocketconnection)
+  - [createRouteContract — Factory](#createroutecontract--factory)
+    - [defineRoute](#defineroute)
+    - [useTypedSearchParams](#usetypedsearchparams)
   - [useAlertMessage](#usealertmessageautohideduration-number)
   - [useAsyncState](#useasyncstatet-initialdata-t--null)
   - [useCallTimer](#usecalltimerstartedAt-number--null)
@@ -58,7 +60,7 @@
 |---|---|---|
 | [`@void-snippets/core`](./packages/core) | `0.3.0` | Shared types, branded IDs, adapter interfaces, and utility functions |
 | [`@void-snippets/client`](./packages/client) | `0.3.0` | Framework-agnostic generic CRUD resource service (axios-powered) |
-| [`@void-snippets/react`](./packages/react) | `0.5.0` | TanStack Query v5 hook factory, Socket.IO hook factory, and general-purpose React hooks |
+| [`@void-snippets/react`](./packages/react) | `0.6.0` | TanStack Query factory, Socket.IO factory, type-safe routing contract, and React utility hooks |
 
 **Design goals:**
 
@@ -79,34 +81,33 @@ void-snippets/
 │   │       ├── id.ts            # VSId<K, T> branded type
 │   │       ├── string-to-id.ts  # stringToId() runtime helper
 │   │       ├── index.ts         # public barrel exports
-│   │       ├── types/
-│   │       │   └── index.ts     # All shared interfaces + createDefaultAdapters()
-│   │       └── utils/
-│   │           └── catch-error.ts  # catchError() Go-style error handling
+│   │       ├── types/index.ts   # All shared interfaces + createDefaultAdapters()
+│   │       └── utils/catch-error.ts  # catchError() Go-style error handling
 │   ├── client/                  # @void-snippets/client
 │   │   └── src/
-│   │       ├── configure.ts     # configure() / getConfiguredInstance()
-│   │       ├── index.ts         # public barrel exports
+│   │       ├── configure.ts           # configure() / getConfiguredInstance()
+│   │       ├── index.ts               # public barrel exports
 │   │       ├── services/
 │   │       │   ├── base-api.service.ts      # BaseApiService (abstract)
 │   │       │   └── resource-api.service.ts  # ResourceService<…> (generic CRUD)
-│   │       └── utils/
-│   │           └── handle-api-error.ts  # handleApiError() normalizer
+│   │       └── utils/handle-api-error.ts    # handleApiError() normalizer
 │   └── react/                   # @void-snippets/react
 │       └── src/
 │           ├── index.ts         # public barrel exports
 │           ├── hooks/
 │           │   ├── createResourceHooks.ts  # TanStack Query hook factory
-│           │   ├── useAlertMessage.ts      # Alert / toast state
-│           │   ├── useAsyncState.ts        # Generic async state machine
-│           │   ├── useCallTimer.ts         # Elapsed-time formatter
-│           │   ├── useModal.ts             # Modal state with data payload
-│           │   └── usePagination.ts        # Pagination state manager
-│           └── socket/
-│               └── createSocketHooks.ts    # Socket.IO hook factory
-├── package.json                 # Root scripts (build, publish, version)
-├── pnpm-workspace.yaml          # pnpm workspace config
-└── tsconfig.base.json           # Shared TypeScript compiler options
+│           │   ├── useAlertMessage.ts
+│           │   ├── useAsyncState.ts
+│           │   ├── useCallTimer.ts
+│           │   ├── useModal.ts
+│           │   └── usePagination.ts
+│           ├── socket/
+│           │   └── createSocketHooks.ts    # Socket.IO hook factory
+│           └── routing/
+│               └── createRouteContract.ts  # Type-safe route contract factory
+├── package.json
+├── pnpm-workspace.yaml
+└── tsconfig.base.json
 ```
 
 ---
@@ -118,7 +119,8 @@ void-snippets/
     ├── @void-snippets/core       (direct dep)
     ├── @void-snippets/client     (peer dep ≥0.1.0)
     ├── @tanstack/react-query     (^5.0.0)
-    └── socket.io-client          (peer dep ≥4.6.0, optional)
+    ├── socket.io-client          (peer dep ≥4.6.0, optional)
+    └── react-router              (peer dep ≥7.0.0, optional)
 
 @void-snippets/client
     └── @void-snippets/core       (workspace:*)
@@ -138,20 +140,14 @@ pnpm add @void-snippets/core @void-snippets/client @void-snippets/react
 pnpm add axios @tanstack/react-query
 ```
 
-For Socket.IO support, add the optional peer dependency:
+Add optional peer dependencies for the features you use:
 
 ```bash
+# Socket.IO hooks
 pnpm add socket.io-client
-```
 
-Install only what you need:
-
-```bash
-# Non-React / Node.js projects
-pnpm add @void-snippets/client axios
-
-# Types and utilities only
-pnpm add @void-snippets/core
+# Type-safe routing contract
+pnpm add react-router
 ```
 
 **Peer / minimum requirements:**
@@ -163,6 +159,7 @@ pnpm add @void-snippets/core
 | `axios` | `^1.6.0` | `@void-snippets/client` |
 | `@tanstack/react-query` | `^5.0.0` | `createResourceHooks` |
 | `socket.io-client` | `>=4.6.0` | `createSocketHooks` (optional) |
+| `react-router` | `>=7.0.0` | `createRouteContract` (optional) |
 | TypeScript | `^5.4.0` | All packages |
 
 ---
@@ -174,11 +171,9 @@ Each package uses [tsup](https://tsup.egoist.dev/) to produce dual CJS + ESM out
 | Script (root) | Description |
 |---|---|
 | `pnpm build` | Build all packages in dependency order |
-| `pnpm build:core` | Build `@void-snippets/core` only |
-| `pnpm build:client` | Build `@void-snippets/client` only |
 | `pnpm build:react` | Build `@void-snippets/react` only |
 | `pnpm dev` | Watch mode for all packages |
-| `pnpm publish:all` | Publish all packages to npm (public, no git checks) |
+| `pnpm publish:all` | Publish all packages to npm |
 | `pnpm version:bump` | Run `npm version` across all packages |
 
 ---
@@ -209,120 +204,62 @@ Root `tsconfig.base.json` (extended by each package):
 Shared foundation — zero runtime dependencies.
 
 ```ts
-import type { VSId, VSPagination, VSQueryParams, VSDefaultPaginatedResponse,
-              VSDefaultSingleResponse, VSListResult, VSAdapters } from '@void-snippets/core';
-
+import type { VSId, VSPagination, VSQueryParams, VSListResult, VSAdapters } from '@void-snippets/core';
 import { stringToId, catchError, createDefaultAdapters } from '@void-snippets/core';
 ```
-
----
 
 ### Branded ID Types
 
 #### `VSId<K, T>`
 
 ```ts
-export type VSId<K, T> = K & { __brand: T };
-```
-
-Creates a nominal / branded type from a primitive. Prevents accidental mixing of structurally identical but semantically different ID types at compile time.
-
-```ts
 type ContactId = VSId<string, 'Contact'>;
 type UserId    = VSId<string, 'User'>;
-
-declare const contactId: ContactId;
-declare let   userId: UserId;
 
 userId = contactId; // ❌ Type error — brands don't match
 ```
 
 #### `stringToId<T>(id: string): T`
 
-Casts a raw runtime `string` to a branded `VSId`. Use at system boundaries (URL params, API responses).
+Casts a raw string to a branded `VSId`. Use at system boundaries.
 
 ```ts
-type ContactId = VSId<string, 'Contact'>;
-const id = stringToId<ContactId>(params.contactId); // ContactId ✅
+const id = stringToId<ContactId>(params.contactId);
 ```
-
----
 
 ### Core Types Reference
 
-#### `VSPagination`
-
 ```ts
-export interface VSPagination {
-  page:           number; // Current page (1-based)
-  limit:          number; // Items per page
-  totalPages:     number;
-  totalDocuments: number;
-}
+interface VSPagination { page: number; limit: number; totalPages: number; totalDocuments: number; }
+interface VSQueryParams { page?: number; limit?: number; [key: string]: unknown; }
+interface VSListResult<T> { items: T[]; pagination: VSPagination; }
 ```
 
-#### `VSQueryParams`
-
-```ts
-export interface VSQueryParams {
-  page?:  number;
-  limit?: number;
-  [key: string]: unknown; // Any additional filter / sort params
-}
-```
-
-#### `VSDefaultPaginatedResponse<T>`
-
-Default list response shape. Your API must match this to use zero-config adapters:
-
-```json
-{ "data": { "items": [...], "page": 1, "limit": 10, "totalPages": 5, "totalDocuments": 42 } }
-```
-
-#### `VSDefaultSingleResponse<T>`
-
-Default single-item response shape: `{ "data": { ... } }`.
-
-#### `VSListResult<TBase>`
-
-```ts
-export interface VSListResult<TBase> {
-  items:      TBase[];
-  pagination: VSPagination;
-}
-```
-
-The normalised internal list result produced by the `fromList` adapter.
-
----
+Default API response shapes:
+- **List:** `{ data: { items, page, limit, totalPages, totalDocuments } }`
+- **Single:** `{ data: <item> }`
 
 ### Adapter System
 
-#### `VSAdapters<TListRaw, TBase, TSingleRaw, TDetail>`
-
 ```ts
-export interface VSAdapters<TListRaw, TBase, TSingleRaw, TDetail> {
+interface VSAdapters<TListRaw, TBase, TSingleRaw, TDetail> {
   fromList:   (raw: TListRaw)   => VSListResult<TBase>;
   fromSingle: (raw: TSingleRaw) => TDetail;
 }
 ```
 
-#### `createDefaultAdapters<TBase, TDetail>()`
-
-Returns pre-built adapters for the default response shapes. No configuration needed if your API matches.
-
----
+`createDefaultAdapters<TBase, TDetail>()` — pre-built adapters for the default response shapes.
 
 ### Utilities
 
 #### `catchError<T>(promise: Promise<T>)`
 
-Go-style error handling — wraps a Promise in a `[error, null] | [null, data]` tuple.
+Go-style error handling. Returns `[Error, null] | [null, T]`.
 
 ```ts
 const [err, user] = await catchError(fetchUser(id));
-if (err) { console.error(err.message); return; }
-console.log(user.name); // user is T, not T | null
+if (err) return;
+console.log(user.name); // user is T here, not T | null
 ```
 
 ---
@@ -331,108 +268,52 @@ console.log(user.name); // user is T, not T | null
 
 Framework-agnostic HTTP resource service.
 
-```ts
-import { configure, BaseApiService, ResourceService, handleApiError } from '@void-snippets/client';
-```
-
----
-
 ### Configuration
 
-#### `configure(instance: AxiosInstance): void`
-
-Registers an axios instance globally. Must be called once at your app entry point.
-
 ```ts
-import axios from 'axios';
 import { configure } from '@void-snippets/client';
-
-configure(axios.create({
-  baseURL: 'https://api.example.com',
-  headers: { 'Content-Type': 'application/json' },
-}));
+configure(axios.create({ baseURL: 'https://api.example.com' }));
 ```
-
----
 
 ### ResourceService
 
 ```ts
-export class ResourceService<
-  TId, TBase,
-  TDetail    = TBase,
-  TCreate    = Partial<TBase>,
-  TUpdate    = Partial<TBase>,
-  TListRaw   = VSDefaultPaginatedResponse<TBase>,
-  TSingleRaw = VSDefaultSingleResponse<TDetail>,
-> extends BaseApiService
+class ResourceService<TId, TBase, TDetail = TBase, TCreate = Partial<TBase>, TUpdate = Partial<TBase>>
 ```
 
-Generic CRUD base class. All five methods normalise errors through `handleApiError`.
-
-| Method | HTTP | Returns |
-|---|---|---|
-| `list(params?)` | `GET {endpoint}` | `Promise<TListRaw>` |
-| `get(id)` | `GET {endpoint}/{id}` | `Promise<TSingleRaw>` |
-| `create(payload)` | `POST {endpoint}` | `Promise<TSingleRaw>` |
-| `update(id, payload)` | `PATCH {endpoint}/{id}` | `Promise<TSingleRaw>` |
-| `delete(id)` | `DELETE {endpoint}/{id}` | `Promise<TSingleRaw>` |
-
-#### Defining a Resource Service
+| Method | HTTP |
+|---|---|
+| `list(params?)` | `GET /endpoint` |
+| `get(id)` | `GET /endpoint/:id` |
+| `create(payload)` | `POST /endpoint` |
+| `update(id, payload)` | `PATCH /endpoint/:id` |
+| `delete(id)` | `DELETE /endpoint/:id` |
 
 ```ts
 // contacts/contacts.api.ts
-import { ResourceService } from '@void-snippets/client';
-import type { Contact } from './contacts.types';
-
 export class ContactsApiService extends ResourceService<
-  Contact.Id,
-  Contact.Base,
-  Contact.WithCreatedBy,
-  Contact.Apis.CreatePayload,
-  Contact.Apis.UpdatePayload
+  Contact.Id, Contact.Base, Contact.WithCreatedBy,
+  Contact.Apis.CreatePayload, Contact.Apis.UpdatePayload
 > {
   constructor() { super('/contacts'); }
 }
-
 export const ContactsApis = new ContactsApiService();
 ```
 
----
-
 ### Error Handling
 
-#### `handleApiError(error: unknown): never`
-
-Normalises axios and generic errors into a standard `Error`. Always throws.
-
-| Error type | Behaviour |
-|---|---|
-| `AxiosError` with `response.data.message` | Throws `new Error(serverMessage)` |
-| `AxiosError` without server message | Throws `new Error(error.message)` |
-| `Error` (non-axios) | Re-throws as-is |
-| Any other value | Throws `new Error("An unexpected error occurred.")` |
+`handleApiError(error: unknown): never` — normalises axios errors into standard `Error` objects. Always throws.
 
 ---
 
 ## Package: `@void-snippets/react`
 
-TanStack Query v5 hooks factory, Socket.IO hooks factory, and five standalone React utility hooks.
-
 ```ts
 import {
   createResourceHooks,
   createSocketHooks,
+  createRouteContract, defineRoute, useTypedSearchParams,
   useAlertMessage, useAsyncState, useCallTimer, useModal, usePagination,
-} from '@void-snippets/react';
-
-import type {
-  VSUseListReturn, VSUseGetReturn,
-  VSResourceHooksOptions, VSOptimisticHandlers, VSOptimisticOperation,
-  VSSocketConnectionReturn,
-  VSAlertVariant, VSAlertState,
-  VSAsyncStatus, VSUseAsyncStateReturn,
-  VSModalReturn, VSPaginationReturn,
 } from '@void-snippets/react';
 ```
 
@@ -441,13 +322,11 @@ import type {
 ### Setup
 
 ```ts
-// 1. Configure axios at app entry
-import axios from 'axios';
+// 1. Configure axios
 import { configure } from '@void-snippets/client';
 configure(axios.create({ baseURL: 'https://api.example.com' }));
 
-// 2. Wrap app with QueryClientProvider
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+// 2. QueryClientProvider
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
@@ -457,137 +336,70 @@ const queryClient = new QueryClient({
 
 ### `createResourceHooks` — Factory
 
-Creates a set of four TanStack Query hooks scoped to a single resource. All type parameters are **fully inferred** from `apiService` — you never write generics at the call site.
-
-#### `VSResourceHooksOptions`
-
-```ts
-export interface VSResourceHooksOptions<
-  TListRaw, TBase, TSingleRaw, TDetail,
-  TId = unknown, TUpdate = unknown, TCreate = unknown
-> {
-  adapters?:      VSAdapters<TListRaw, TBase, TSingleRaw, TDetail>;
-  defaultParams?: VSQueryParams;  // default: { page: 1, limit: 10 }
-  optimistic?:    VSOptimisticHandlers<TBase, TId, TUpdate, TCreate, TDetail>;
-}
-```
+Creates four TanStack Query hooks for a single resource. All types are inferred from `apiService`.
 
 ```ts
 export const contactHooks = createResourceHooks('contacts', ContactsApis);
+// or with options:
+export const contactHooks = createResourceHooks('contacts', ContactsApis, {
+  defaultParams: { page: 1, limit: 20 },
+  optimistic: { ... },
+});
 ```
-
----
 
 #### `useList(params?: VSQueryParams)`
 
-**Return type: `VSUseListReturn<TBase>`**
-
 ```ts
-export interface VSUseListReturn<TBase> {
-  list:         TBase[];
-  pagination:   VSPagination;
-  isLoading:    boolean; // First fetch only — no cached data. Render full skeleton here.
-  isFetching:   boolean; // Any fetch in progress. Use for a subtle progress indicator.
-  isRefetching: boolean; // Background refetch with cached data. Use for a refresh badge.
-  isError:      boolean;
-  error:        Error | null;
-  refetch:      () => Promise<unknown>; // Retry this query — use in error states.
-  invalidate:   () => void;             // Bust the whole prefix.
-}
-```
-
-> **`isLoading` vs `isFetching`** — `isLoading` is true only on the very first fetch (no cached data). It does NOT become true when cache is invalidated after a mutation — that produces `isRefetching: true`. Use `isLoading` for full-page spinners and `isRefetching` for a lightweight overlay on existing data.
-
-**Cache key:** `[queryKeyPrefix, params]`
-
-```tsx
-const { list, isLoading, isRefetching, isError, error, pagination, refetch } =
+const { list, pagination, isLoading, isFetching, isRefetching,
+        isError, error, refetch, invalidate } =
   contactHooks.useList({ page: 1, limit: 20, search: 'john' });
-
-if (isLoading)  return <Skeleton />;
-if (isError)    return <ErrorState message={error?.message} onRetry={refetch} />;
-
-return (
-  <>
-    {isRefetching && <RefreshBadge />}
-    {list.map(c => <ContactCard key={c._id} contact={c} />)}
-  </>
-);
 ```
 
----
+| Field | Type | When true |
+|---|---|---|
+| `isLoading` | `boolean` | First fetch only — no cached data. Show full-page skeleton. |
+| `isFetching` | `boolean` | Any fetch in progress. Show subtle progress indicator. |
+| `isRefetching` | `boolean` | Background refetch with existing data. Show lightweight overlay. |
+| `refetch` | `() => Promise` | Retry button in error states — retargets this query only. |
+| `invalidate` | `() => void` | Busts the entire resource prefix — refetches all active param variants. |
 
 #### `useGet(id: TId, staleTime?: number)`
 
-Query is **disabled** when `id` is `undefined`, `null`, or `""`.
-
-**Return type: `VSUseGetReturn<TDetail>`**
-
 ```ts
-export interface VSUseGetReturn<TDetail> {
-  item:         TDetail | undefined;
-  isLoading:    boolean;
-  isFetching:   boolean;
-  isRefetching: boolean;
-  isError:      boolean;
-  error:        Error | null;
-  refetch:      () => Promise<unknown>;
-}
+const { item, isLoading, isFetching, isRefetching, isError, error, refetch } =
+  contactHooks.useGet(contactId);
+// Disabled automatically when id is undefined, null, or ""
 ```
-
-**Cache key:** `[queryKeyPrefix, id]` — `staleTime` defaults to `30_000` ms.
-
----
 
 #### `useMutations()`
 
 ```ts
-useMutations(): {
-  create: UseMutationResult<TDetail, Error, TCreate>;
-  update: UseMutationResult<TDetail, Error, { _id: TId; payload: TUpdate }>;
-  remove: UseMutationResult<TDetail, Error, TId>;
-}
-```
-
-> `remove` not `delete` — `delete` is a reserved keyword in JavaScript.
-
-All three mutations call `queryClient.invalidateQueries({ queryKey: [prefix] })` on settlement.
-
-```tsx
 const { create, update, remove } = contactHooks.useMutations();
+// Each is a full UseMutationResult from TanStack Query
 
 // Always await for complex forms — keeps the modal open on error
 const handleSave = async (data) => {
   try {
     await create.mutateAsync(data)
-    modal.closeModal()        // only reaches here on API success
+    modal.closeModal()           // only on success
     toast.success('Created!')
-  } catch (error) {
-    toast.error(error.message) // modal still open, form data intact
+  } catch (err) {
+    toast.error(err.message)     // modal still open, all fields intact
   }
 }
 ```
 
----
-
 #### `useInfinite(params?: VSQueryParams)`
 
-Wraps TanStack Query's `useInfiniteQuery`. **Cache key:** `[queryKeyPrefix, "INFINITE", params]`
-
-```tsx
+```ts
 const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
   contactHooks.useInfinite({ limit: 20 });
-
 const all = data?.pages.flatMap(p => p.items) ?? [];
 ```
-
-`getNextPageParam` returns `page + 1` while `page < totalPages`, and `undefined` on the last page.
 
 ---
 
 ### Custom API Adapters
-
-Pass `adapters` when your API returns a different shape than the defaults:
 
 ```ts
 export const contactHooks = createResourceHooks('contacts', ContactsApis, {
@@ -602,14 +414,12 @@ export const contactHooks = createResourceHooks('contacts', ContactsApis, {
 
 ### Optimistic Updates
 
-Provide cache transform functions in `optimistic` to get instant UI feedback before the server responds. The library applies them to all active `useList`, `useInfinite`, and `useGet` caches simultaneously, maintains correct concurrent ordering via an `effectiveBase` stack, auto-rollbacks on error, and defers server invalidation until all in-flight mutations settle.
-
-#### Configuration
+Provide cache transform functions for instant UI feedback before the server responds. The library applies them to all active `useList`, `useInfinite`, and `useGet` caches, maintains correct concurrent ordering via an `effectiveBase` stack, auto-rollbacks on error, and defers invalidation until all in-flight mutations settle.
 
 ```ts
 export const contactHooks = createResourceHooks('contacts', ContactsApis, {
   optimistic: {
-    // _id comes from mutation args — it is NOT in payload
+    // _id is from mutation args — NOT from payload
     update: (cache, { _id, payload }) =>
       cache.map(item => item._id === _id ? { ...item, ...payload } : item),
 
@@ -621,10 +431,11 @@ export const contactHooks = createResourceHooks('contacts', ContactsApis, {
       ...cache,
     ],
 
-    onError: (error, operation) => {
-      toast.error(`Failed to ${operation.kind}: ${error.message}`)
-    },
+    // Fires after rollback — cache is in a consistent state
+    onError: (error, operation) =>
+      toast.error(`Failed to ${operation.kind}: ${error.message}`),
 
+    // Fires after effectiveBase advances for this operation
     onSuccess: (operation) => {
       if (operation.kind === 'create') analytics.track('contact_created')
     },
@@ -632,328 +443,25 @@ export const contactHooks = createResourceHooks('contacts', ContactsApis, {
 });
 ```
 
-#### `VSOptimisticHandlers`
+`VSOptimisticOperation` — the discriminated union passed to `onError` and `onSuccess`:
 
 ```ts
-export interface VSOptimisticHandlers<TBase, TId, TUpdate, TCreate, TDetail> {
-  update?:       (cache: TBase[], args: { _id: TId; payload: TUpdate }) => TBase[];
-  updateSingle?: (current: TDetail, payload: TUpdate) => TDetail;
-  remove?:       (cache: TBase[], id: TId) => TBase[];
-  create?:       (cache: TBase[], args: { payload: TCreate; tempId: string }) => TBase[];
-  onError?:      (error: Error, operation: VSOptimisticOperation<TId, TCreate, TUpdate>) => void;
-  onSuccess?:    (operation: VSOptimisticOperation<TId, TCreate, TUpdate>) => void;
-}
-```
-
-#### `VSOptimisticOperation`
-
-```ts
-export type VSOptimisticOperation<TId, TCreate, TUpdate> =
+type VSOptimisticOperation<TId, TCreate, TUpdate> =
   | { kind: 'create'; payload: TCreate; tempId: string }
   | { kind: 'update'; _id: TId; payload: TUpdate }
   | { kind: 'remove'; _id: TId }
 ```
 
-#### Handler rules
-
-| Handler | What it does | Affects |
-|---|---|---|
-| `update` | Transforms the matched item | `useList`, `useInfinite` (all pages), `useGet` (auto shallow-merge) |
-| `updateSingle` | Overrides the `useGet` merge for deep structures | `useGet` only |
-| `remove` | Filters the item out + auto-patches pagination | `useList`, `useInfinite`, `useGet` (staled) |
-| `create` | Inserts the optimistic item + auto-patches pagination | `useList`, `useInfinite` (first page only) |
-| `onError` | Fires after rollback — cache is consistent when called | — |
-| `onSuccess` | Fires after `effectiveBase` advances for this operation | — |
-
-> **Complex forms** — never close a modal before `await mutateAsync()` resolves when the form has many fields. The optimistic list update still fires instantly behind the open modal. If the API fails, the item disappears and the modal remains with all fields intact.
+> **Complex forms** — never close a modal before `await mutateAsync()` resolves when the form has many fields. The optimistic list update fires instantly behind the open modal. On API failure, the item disappears (rollback) and the modal stays open with all fields intact.
 
 ---
 
 ### `createSocketHooks` — Factory
 
-Creates three type-safe Socket.IO hooks bound to a specific socket instance. Requires `socket.io-client ≥4.6.0`.
-
-Call once at module level — the returned hooks close over the socket and both event-map generics, so **no type parameters are needed at call sites**.
-
-#### Setup
-
-**1. Define your event protocol (project-level, not the library's concern)**
+Creates type-safe Socket.IO hooks bound to a socket instance. Requires `socket.io-client ≥4.6.0`.
 
 ```ts
-// socket-protocols.d.ts
-import type { Import } from '@/api/imports/imports.types';
-
-declare global {
-  interface IClientToServerEvents {
-    'join-room':       (roomId: string) => void;
-    'send-message':    (msg: { text: string; roomId: string }) => void;
-    'update-profile':  (name: string, callback: (response: { status: 'ok' | 'error' }) => void) => void;
-  }
-
-  interface IServerToClientEvents {
-    'new-message':      (data: TSocketResponseEnvelope<NewMessagePayload>) => void;
-    'import:progress':  (data: TSocketResponseEnvelope<Import.ProgressEvent>) => void;
-    'user-joined':      (userId: string) => void;
-    error:              (code: number, msg: string) => void;
-  }
-}
-```
-
-**2. Create the socket instance and the hooks (written once, exported everywhere)**
-
-```ts
-// services/socket-hooks.ts
-import { createSocketHooks } from '@void-snippets/react';
-import { io } from 'socket.io-client';
-
-// You own the socket — configure reconnection, auth, transports here
-const socket = io(import.meta.env.VITE_SOCKET_HOST, {
-  autoConnect: false,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 2000,
-});
-
-export const { useSocketEmit, useSocketListener, useSocketConnection } =
-  createSocketHooks<IClientToServerEvents, IServerToClientEvents>(socket);
-```
-
----
-
-#### `useSocketEmit()`
-
-Returns two functions for type-safe event emission. Both functions are stable references (no re-creation on render).
-
-```ts
-useSocketEmit(): {
-  emit:        <K extends keyof TClientEvents>(event: K, ...args: PayloadArgs<K>) => void;
-  emitWithAck: <K extends AckEventKeys>(event: K, ...args: PayloadArgs<K>) => Promise<AckResponse<K>>;
-}
-```
-
-**`emit(event, ...args): void`**
-
-Fire-and-forget. Throws synchronously if the socket is not connected. Callable on any event regardless of its signature — TypeScript strips the ACK callback from the args so you never pass one manually.
-
-```tsx
-const { emit } = useSocketEmit();
-
-emit('join-room', roomId);
-// TypeScript knows args is [string] — no callback expected
-
-emit('send-message', { text: 'Hello', roomId });
-// TypeScript knows args is [{ text: string; roomId: string }]
-```
-
-**`emitWithAck(event, ...args): Promise<AckResponse>`**
-
-Emits and returns a `Promise` that resolves with the server's acknowledgement response. TypeScript will **error at compile time** if called on an event whose type has no trailing callback — the constraint is enforced statically, not at runtime.
-
-Returns a rejected `Promise` if the socket is not connected.
-
-```tsx
-const { emitWithAck } = useSocketEmit();
-
-const result = await emitWithAck('update-profile', name);
-// result is inferred as { status: 'ok' | 'error' }
-
-if (result.status === 'ok') {
-  toast.success('Profile updated!')
-}
-
-// ❌ TypeScript error — 'join-room' has no ACK callback in its type
-const bad = await emitWithAck('join-room', roomId);
-```
-
-Requires `socket.io-client ≥4.6.0` (uses the native `socket.emitWithAck` internally).
-
----
-
-#### `useSocketListener(event, handler, options?)`
-
-Subscribes to a server event for the lifetime of the calling component.
-
-```ts
-function useSocketListener<K extends keyof TServerEvents>(
-  event:    K,
-  handler:  TServerEvents[K],
-  options?: { enabled?: boolean },
-): void
-```
-
-**Stale closure safety** — a ref pattern ensures the latest version of `handler` is always called without re-registering the listener. Inline arrow functions are safe; no `useCallback` required at the call site.
-
-**`options.enabled`** (default `true`) — when `false`, the listener is not attached. Flip it dynamically to conditionally subscribe without unmounting the component.
-
-```tsx
-// Basic usage — always active
-useSocketListener('new-message', (data) => {
-  setMessages(prev => [...prev, data]);
-});
-
-// Handler with access to latest closure state — no useCallback needed
-useSocketListener('import:progress', (data) => {
-  setProgress(data.percent);   // always reads the latest setter
-});
-
-// Conditional — only listen after joining a room
-useSocketListener('user-joined', (userId) => {
-  setParticipants(prev => [...prev, userId]);
-}, { enabled: isConnected && !!activeRoomId });
-```
-
----
-
-#### `useSocketConnection()`
-
-Reactively tracks socket connection state and exposes connect/disconnect controls. Safe to call from multiple components simultaneously — each instance independently subscribes to the same socket events.
-
-```ts
-useSocketConnection(): VSSocketConnectionReturn
-```
-
-**`VSSocketConnectionReturn`**
-
-```ts
-export interface VSSocketConnectionReturn {
-  /** True when the socket has an active, confirmed connection. */
-  isConnected:  boolean;
-
-  /**
-   * True while a connection or reconnection attempt is in progress.
-   * Resets to false when `connect` or `connect_error` fires.
-   */
-  isConnecting: boolean;
-
-  /** The socket ID assigned by the server. Undefined when disconnected. */
-  socketId:     string | undefined;
-
-  /** The error from the last failed connection attempt. Null before any attempt or after success. */
-  error:        Error | null;
-
-  /** Initiates a connection. No-op if already connected. */
-  connect:      () => void;
-
-  /** Gracefully closes the connection and stops reconnection attempts. */
-  disconnect:   () => void;
-}
-```
-
-**Events tracked internally:**
-
-| Source | Event | Effect on state |
-|---|---|---|
-| `socket` | `connect` | `isConnected → true`, `isConnecting → false`, `socketId` updated |
-| `socket` | `disconnect` | `isConnected → false`, `isConnecting → false`, `socketId → undefined` |
-| `socket` | `connect_error` | `isConnected → false`, `isConnecting → false`, `error` set |
-| `socket.io` (Manager) | `reconnect_attempt` | `isConnecting → true` |
-| `socket.io` (Manager) | `reconnect_failed` | `isConnecting → false`, `error` set |
-
-All five listeners are removed on component unmount.
-
-```tsx
-function AppShell() {
-  const { connect, disconnect, isConnected, isConnecting, error, socketId } =
-    useSocketConnection();
-
-  // Connect on mount, disconnect on unmount
-  useEffect(() => {
-    connect();
-    return () => disconnect();
-  }, []);
-
-  if (isConnecting) return <Banner>Connecting to server…</Banner>;
-  if (error)        return <Banner type="error">Connection failed: {error.message}</Banner>;
-
-  return (
-    <div>
-      {isConnected && <StatusDot green label={`Connected (${socketId})`} />}
-      <YourApp />
-    </div>
-  );
-}
-```
-
----
-
-#### Full Socket.IO usage example
-
-```tsx
-// ChatRoom.tsx
-import { useSocketEmit, useSocketListener, useSocketConnection }
-  from '@/services/socket-hooks';
-
-function ChatRoom({ roomId }: { roomId: string }) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [participants, setParticipants] = useState<string[]>([]);
-
-  const { isConnected, isConnecting, error, connect, disconnect } =
-    useSocketConnection();
-
-  const { emit, emitWithAck } = useSocketEmit();
-
-  // Connect when the component mounts
-  useEffect(() => {
-    connect();
-    return () => disconnect();
-  }, []);
-
-  // Join the room once connected
-  useEffect(() => {
-    if (!isConnected) return;
-    emit('join-room', roomId);
-  }, [isConnected, roomId]);
-
-  // Listen for incoming messages — always active while mounted
-  useSocketListener('new-message', (data) => {
-    setMessages(prev => [...prev, data.payload]);
-  });
-
-  // Only listen for participant events when inside a room
-  useSocketListener('user-joined', (userId) => {
-    setParticipants(prev => [...prev, userId]);
-  }, { enabled: isConnected });
-
-  const handleSend = async (text: string) => {
-    emit('send-message', { text, roomId });
-  };
-
-  const handleRenameProfile = async (name: string) => {
-    // TypeScript infers result: { status: 'ok' | 'error' }
-    const result = await emitWithAck('update-profile', name);
-    if (result.status === 'ok') toast.success('Name updated!');
-    else toast.error('Failed to update name.');
-  };
-
-  if (isConnecting) return <Spinner label="Connecting…" />;
-  if (error)        return <ErrorState message={error.message} onRetry={connect} />;
-
-  return (
-    <div>
-      <MessageList messages={messages} />
-      <ParticipantsList participants={participants} />
-      <MessageInput onSend={handleSend} disabled={!isConnected} />
-      <button onClick={() => handleRenameProfile('New Name')}>
-        Update Profile
-      </button>
-    </div>
-  );
-}
-```
-
----
-
-#### Migrating from a global socket pattern
-
-If you currently use module-level event hooks (`socket.on` / `socket.emit` called directly), the migration requires only one new file:
-
-```ts
-// Before — direct socket imports scattered across files
-import { socket } from '@/services/socket';
-socket.on('new-message', handler);
-socket.emit('join-room', roomId);
-
-// After — one factory file replaces all direct usage
-// services/socket-hooks.ts
+// services/socket-hooks.ts — written once, imported everywhere
 import { createSocketHooks } from '@void-snippets/react';
 import { io } from 'socket.io-client';
 
@@ -961,76 +469,317 @@ const socket = io(import.meta.env.VITE_SOCKET_HOST, { autoConnect: false });
 
 export const { useSocketEmit, useSocketListener, useSocketConnection } =
   createSocketHooks<IClientToServerEvents, IServerToClientEvents>(socket);
-
-// In components — import the hooks, not the socket
-import { useSocketEmit, useSocketListener } from '@/services/socket-hooks';
 ```
 
-The raw `socket` instance can still be exported from the factory file if you need direct access in non-React code (e.g., middleware, sagas).
+#### `useSocketEmit()`
+
+```ts
+const { emit, emitWithAck } = useSocketEmit();
+
+// Fire and forget — throws if socket not connected
+emit('join-room', roomId);
+
+// Waits for ACK — TypeScript errors at compile time if called on no-ACK event
+const result = await emitWithAck('update-profile', name);
+// result: { status: 'ok' | 'error' } — fully inferred from event type
+```
+
+`emitWithAck` requires `socket.io-client ≥4.6.0`.
+
+#### `useSocketListener(event, handler, options?)`
+
+```ts
+// Inline arrow functions are safe — ref pattern prevents stale closures
+useSocketListener('new-message', (data) => setMessages(p => [...p, data]));
+
+// Conditional — only listen when needed
+useSocketListener('user-joined', (userId) => addParticipant(userId), {
+  enabled: isConnected && !!roomId,
+});
+```
+
+#### `useSocketConnection()`
+
+```ts
+const { isConnected, isConnecting, socketId, error, connect, disconnect } =
+  useSocketConnection();
+```
+
+| Field | Description |
+|---|---|
+| `isConnected` | True when socket has an active connection |
+| `isConnecting` | True during initial connect or reconnect attempts |
+| `socketId` | Server-assigned socket ID, undefined when disconnected |
+| `error` | Last connection error, null otherwise |
+| `connect()` | Initiates connection — no-op if already connected |
+| `disconnect()` | Gracefully closes the connection |
 
 ---
 
-### `useAlertMessage(autoHideDuration?: number)`
+### `createRouteContract` — Factory
 
-Manages alert / toast notification state.
+Converts a tree of `defineRoute()` definitions into a fully typed route contract. Every route gets a `build()` function whose signature is **automatically conditioned** on the presence of path params and search params — TypeScript errors at the call site when required values are missing.
 
-```ts
-function useAlertMessage(autoHideDuration?: number): {
-  alert:     VSAlertState;   // { message, type, isVisible }
-  showAlert: (message: ReactNode | string, type?: VSAlertVariant) => void;
-  hideAlert: () => void;
-}
-```
+Requires `react-router ≥7.0.0`.
 
-**`VSAlertVariant`:** `"success" | "info" | "error"` — `autoHideDuration` defaults to `3000` ms, pass `0` to disable.
-
-```tsx
-const { alert, showAlert, hideAlert } = useAlertMessage(4000);
-showAlert('Saved!', 'success');
-{alert.isVisible && <Alert variant={alert.type} onClose={hideAlert}>{alert.message}</Alert>}
-```
-
----
-
-### `useAsyncState<T>(initialData?: T | null)`
-
-Generic async state machine.
-
-**`VSAsyncStatus`:** `"idle" | "pending" | "success" | "error"`
+#### Setup
 
 ```ts
-export interface VSUseAsyncStateReturn<T> {
-  data:      T | null;
-  status:    VSAsyncStatus;
-  error:     Error | null;
-  isLoading: boolean;
-  isSuccess: boolean;
-  isError:   boolean;
-  setData:   (data: T | null) => void;
-  setError:  (error: Error | null) => void;
-  reset:     () => void;
-  execute:   (
-    asyncFn: () => Promise<T>,
-    options?: { onSuccess?: (data: T) => void; onError?: (error: Error) => void }
-  ) => Promise<[Error, null] | [null, T]>;
-}
-```
+// routes.ts — written once, imported throughout the app
+import { createRouteContract, defineRoute } from '@void-snippets/react';
 
-`execute` manages all state transitions and returns a `catchError`-style tuple.
+export const AppRoutes = createRouteContract({
+  auth: {
+    login:    defineRoute('/auth/login').search<{ redirect?: string }>(),
+    register: defineRoute('/auth/register'),
+  },
 
-```tsx
-const { isLoading, execute } = useAsyncState<Contact.WithCreatedBy>();
-const [err, contact] = await execute(() => ContactsApis.create(formData), {
-  onSuccess: () => showAlert('Created!', 'success'),
-  onError:   (e) => showAlert(e.message, 'error'),
+  dashboard: {
+    root: defineRoute('/dashboard', {
+      breadcrumb: 'Home',
+      title:      'Dashboard',
+    }),
+
+    users: {
+      list: defineRoute('/dashboard/users', {
+        permissions: ['ADMIN'],
+        breadcrumb:  'Users',
+        title:       'User Management',
+      }).search<{ page: number; sort?: 'asc' | 'desc'; q?: string }>(),
+
+      detail: defineRoute('/dashboard/users/:userId', {
+        permissions: ['ADMIN'],
+        breadcrumb:  'User Detail',
+      }).search<{ tab?: 'profile' | 'settings' | 'activity' }>(),
+    },
+
+    settings: defineRoute('/dashboard/settings', {
+      breadcrumb: 'Settings',
+      title:      'Account Settings',
+    }),
+  },
 });
 ```
 
 ---
 
+#### `defineRoute`
+
+```ts
+defineRoute(path: string, config?: RouteMetadata): RouteDefinition
+```
+
+Defines a single route. The second argument is **metadata only** — no search-related fields.
+
+```ts
+interface RouteMetadata {
+  permissions?: string[];           // access control identifiers
+  breadcrumb?:  string;             // breadcrumb label
+  title?:       string;             // page title
+  meta?:        Record<string, unknown>; // custom metadata (loader IDs, analytics tags, etc.)
+}
+```
+
+**`.search<T>()`** — chain when the route accepts URL search params. The generic type is the only input — no value is provided. TypeScript carries the type through the contract.
+
+```ts
+// Route with no params, no search
+defineRoute('/dashboard/settings')
+
+// Route with search — all keys optional
+defineRoute('/auth/login').search<{ redirect?: string }>()
+
+// Route with required search key
+defineRoute('/dashboard/users').search<{ page: number; sort?: 'asc' | 'desc' }>()
+
+// Route with path params and optional search
+defineRoute('/dashboard/users/:userId').search<{ tab?: 'profile' | 'settings' }>()
+
+// Route with path params, no search
+defineRoute('/dashboard/users/:userId/posts/:postId')
+```
+
+> **Use absolute paths.** Concatenating parent/child paths via template literals causes TypeScript performance degradation on large apps. Explicit absolute paths keep autocomplete fast.
+
+---
+
+#### `build()` — URL construction
+
+`build()` is added to every processed route by `createRouteContract`. Its signature adapts to the route's shape — TypeScript enforces the correct call form at compile time.
+
+| Route shape | Signature |
+|---|---|
+| No params, no search | `build() → string` |
+| No params, all-optional search | `build(options?: { search?: S }) → string` |
+| Path params (+ optional search) | `build(options: { params: P; search?: S }) → string` |
+| Required search key | `build(options: { search: S }) → string` |
+
+```ts
+// No args needed
+AppRoutes.auth.register.build()
+// → '/auth/register'
+
+// Optional search arg
+AppRoutes.auth.login.build()
+// → '/auth/login'
+AppRoutes.auth.login.build({ search: { redirect: '/dashboard' } })
+// → '/auth/login?redirect=%2Fdashboard'
+
+// Required params
+AppRoutes.dashboard.users.detail.build({ params: { userId: user._id } })
+// → '/dashboard/users/abc-123'
+
+// Params + optional search
+AppRoutes.dashboard.users.detail.build({
+  params: { userId: '123' },
+  search: { tab: 'settings' },
+})
+// → '/dashboard/users/123?tab=settings'
+
+// Required search key (page)
+AppRoutes.dashboard.users.list.build({ search: { page: 1 } })
+// → '/dashboard/users?page=1'
+AppRoutes.dashboard.users.list.build({ search: { page: 2, sort: 'asc', q: 'john' } })
+// → '/dashboard/users?page=2&sort=asc&q=john'
+
+// ❌ TypeScript compile errors — caught before runtime
+AppRoutes.dashboard.users.detail.build()                        // params required
+AppRoutes.dashboard.users.detail.build({ params: {} })          // userId required
+AppRoutes.dashboard.users.list.build()                          // search.page required
+AppRoutes.dashboard.users.list.build({ search: { page: '1' } }) // page must be number
+```
+
+---
+
+#### React Router v7 wiring
+
+Route `path` and metadata flow from the same source — no duplication.
+
+```ts
+import { createBrowserRouter } from 'react-router';
+
+const router = createBrowserRouter([
+  {
+    path:    AppRoutes.auth.login.path,
+    element: <LoginPage />,
+  },
+  {
+    path:    AppRoutes.dashboard.root.path,
+    element: <DashboardLayout />,
+    handle: {
+      breadcrumb: AppRoutes.dashboard.root.breadcrumb,
+      title:      AppRoutes.dashboard.root.title,
+    },
+    children: [
+      {
+        path:    AppRoutes.dashboard.users.list.path,
+        element: <UsersListPage />,
+        handle: {
+          permissions: AppRoutes.dashboard.users.list.permissions,
+          breadcrumb:  AppRoutes.dashboard.users.list.breadcrumb,
+        },
+      },
+      {
+        path:    AppRoutes.dashboard.users.detail.path,
+        element: <UserDetailPage />,
+        handle:  { permissions: AppRoutes.dashboard.users.detail.permissions },
+      },
+    ],
+  },
+]);
+```
+
+---
+
+#### Navigation
+
+```ts
+const navigate = useNavigate();
+navigate(AppRoutes.dashboard.users.detail.build({ params: { userId: id } }));
+
+// Link component
+<Link to={AppRoutes.auth.login.build({ search: { redirect: location.pathname } })}>
+  Log in
+</Link>
+```
+
+---
+
+#### `useTypedSearchParams`
+
+```ts
+useTypedSearchParams(route: ProcessedRoute<P, S>): {
+  search:      Readonly<Partial<S>>;
+  setSearch:   (update: Partial<S>) => void;
+  clearSearch: () => void;
+}
+```
+
+Wraps React Router's `useSearchParams` with the type declared on the route. Pass any processed route — TypeScript infers `S` automatically.
+
+**`setSearch` merges** — it does not replace the full query string. Pass only the keys you want to change. Set a key to `undefined` to remove it from the URL.
+
+```tsx
+// Inside the /dashboard/users page component
+const { search, setSearch, clearSearch } =
+  useTypedSearchParams(AppRoutes.dashboard.users.list);
+
+// search: Partial<{ page: number; sort?: 'asc' | 'desc'; q?: string }>
+
+setSearch({ page: 2 })               // keeps sort, q — only updates page
+setSearch({ page: 1, sort: 'asc' })  // updates page and sort — keeps q
+setSearch({ q: undefined })          // removes q from the URL
+clearSearch()                         // wipes all search params
+```
+
+> ⚠️ **Runtime coercion note:** React Router's `useSearchParams` returns all URL values as strings. If you declare `page: number`, `search.page` will be `"1"` (string) at runtime even though TypeScript types it as `number`. Coerce explicitly where needed: `Number(search.page ?? 1)`. This is a deliberate trade-off that avoids a runtime schema dependency.
+
+---
+
+#### `RouteMetadata` — full interface
+
+```ts
+export interface RouteMetadata {
+  permissions?: string[];            // consumed via handle in React Router config
+  breadcrumb?:  string;              // consumed via handle in React Router config
+  title?:       string;              // consumed via handle in React Router config
+  meta?:        Record<string, unknown>; // custom metadata (loader keys, feature flags…)
+}
+```
+
+---
+
+### `useAlertMessage(autoHideDuration?: number)`
+
+```ts
+const { alert, showAlert, hideAlert } = useAlertMessage(4000);
+// alert: { message, type: 'success' | 'info' | 'error', isVisible }
+showAlert('Saved!', 'success');
+```
+
+`autoHideDuration` defaults to `3000` ms. Pass `0` to disable auto-hide.
+
+---
+
+### `useAsyncState<T>(initialData?: T | null)`
+
+Generic async state machine with status tracking and a `catchError`-style execute function.
+
+```ts
+const { isLoading, execute } = useAsyncState<Contact.WithCreatedBy>();
+const [err, contact] = await execute(() => ContactsApis.create(formData), {
+  onSuccess: () => toast.success('Created!'),
+  onError:   (e) => toast.error(e.message),
+});
+```
+
+**Status values:** `"idle" | "pending" | "success" | "error"`
+
+---
+
 ### `useCallTimer(startedAt?: number | null)`
 
-Elapsed time from a Unix timestamp, updated every second, formatted as `"MM:SS"`. Cleans up interval on unmount.
+Elapsed time from a Unix timestamp, formatted as `"MM:SS"`, updated every second.
 
 ```tsx
 const duration = useCallTimer(call.startedAt); // "02:45"
@@ -1041,49 +790,23 @@ const duration = useCallTimer(null);            // "00:00"
 
 ### `useModal<T = unknown>()`
 
-Modal open/close state, data payload, and loading flag for create and edit patterns.
-
 ```ts
-export interface VSModalReturn<T> {
-  isOpen:          boolean;
-  data:            T | null; // null = create mode, T = edit mode
-  isLoading:       boolean;
-  openCreateModal: () => void;
-  openEditModal:   (editData: T) => void;
-  setLoading:      (loading: boolean) => void;
-  closeModal:      () => void;
-  setModal:        (open: boolean, editData?: T | null) => void;
-}
+const modal = useModal<Contact.Base>();
+modal.openCreateModal();      // data → null  (create mode)
+modal.openEditModal(contact); // data → T     (edit mode)
+// Discriminate: if (modal.data) { /* edit */ } else { /* create */ }
 ```
 
-```tsx
-const modal = useModal<Contact.Base>();
-modal.openCreateModal();      // data → null (create mode)
-modal.openEditModal(contact); // data → contact (edit mode)
-if (modal.data) { /* edit */ } else { /* create */ }
-```
+Full interface: `{ isOpen, data, isLoading, openCreateModal, openEditModal, setLoading, closeModal, setModal }`.
 
 ---
 
-### `usePagination(initialPage?: number, initialLimit?: number)`
-
-Pagination state with a `queryParams` object ready for `useList`.
+### `usePagination(initialPage?, initialLimit?)`
 
 ```ts
-export interface VSPaginationReturn {
-  page:               number;
-  limit:              number;
-  queryParams:        VSQueryParams;  // { page, limit } — pass directly to useList()
-  onPaginationChange: (newPage: number, newLimit: number) => void;
-  resetPagination:    () => void;     // resets to page 1 — call when filters change
-  setPage:            (page: number) => void;
-  setLimit:           (limit: number) => void;
-}
-```
-
-```tsx
 const { queryParams, onPaginationChange, resetPagination } = usePagination(1, 20);
 const { list, pagination } = contactHooks.useList(queryParams);
+// resetPagination() — call when a filter changes to go back to page 1
 ```
 
 ---
@@ -1091,82 +814,95 @@ const { list, pagination } = contactHooks.useList(queryParams);
 ## End-to-End Workflow Example
 
 ```ts
-// contacts/contacts.hooks.ts
-import { createResourceHooks } from '@void-snippets/react';
-import { ContactsApis } from './contacts.api';
-
-export const contactHooks = createResourceHooks('contacts', ContactsApis, {
-  optimistic: {
-    update: (cache, { _id, payload }) =>
-      cache.map(item => item._id === _id ? { ...item, ...payload } : item),
-    remove: (cache, id) =>
-      cache.filter(item => item._id !== id),
-    create: (cache, { payload, tempId }) => [
-      { ...payload, _id: tempId as Contact.Id, createdAt: new Date().toISOString() },
-      ...cache,
-    ],
-    onError: (error, operation) => {
-      console.error(`[contacts] optimistic ${operation.kind} failed:`, error.message)
+// routes.ts
+export const AppRoutes = createRouteContract({
+  dashboard: {
+    users: {
+      list: defineRoute('/dashboard/users', {
+        permissions: ['ADMIN'],
+        breadcrumb:  'Users',
+      }).search<{ page: number; sort?: 'asc' | 'desc' }>(),
+      detail: defineRoute('/dashboard/users/:userId', {
+        permissions: ['ADMIN'],
+      }),
     },
   },
 });
 ```
 
+```ts
+// contacts.hooks.ts
+export const contactHooks = createResourceHooks('contacts', ContactsApis, {
+  optimistic: {
+    update: (cache, { _id, payload }) =>
+      cache.map(item => item._id === _id ? { ...item, ...payload } : item),
+    remove: (cache, id) => cache.filter(item => item._id !== id),
+    create: (cache, { payload, tempId }) => [
+      { ...payload, _id: tempId as Contact.Id },
+      ...cache,
+    ],
+    onError: (error, op) => toast.error(`Failed to ${op.kind}: ${error.message}`),
+  },
+});
+```
+
 ```tsx
-// contacts/ContactsPage.tsx
-export function ContactsPage() {
-  const { queryParams, onPaginationChange } = usePagination(1, 20);
+// UsersListPage.tsx
+export function UsersListPage() {
+  const navigate = useNavigate();
+  const { queryParams, onPaginationChange, resetPagination } = usePagination(1, 20);
+  const { search, setSearch } = useTypedSearchParams(AppRoutes.dashboard.users.list);
 
   const { list, isLoading, isRefetching, isError, error, refetch, pagination } =
-    contactHooks.useList(queryParams);
+    contactHooks.useList({ ...queryParams, sort: search.sort });
 
-  const { create, update, remove } = contactHooks.useMutations();
-  const modal   = useModal<Contact.Base>();
-  const { alert, showAlert, hideAlert } = useAlertMessage(4000);
+  const { create, remove } = contactHooks.useMutations();
+  const modal = useModal<Contact.Base>();
 
-  const handleSubmit = async (
-    formData: Contact.Apis.CreatePayload | Contact.Apis.UpdatePayload,
-  ) => {
+  const handleSave = async (data: Contact.Apis.CreatePayload) => {
     try {
-      if (modal.data) {
-        await update.mutateAsync({ _id: modal.data._id, payload: formData as Contact.Apis.UpdatePayload })
-      } else {
-        await create.mutateAsync(formData as Contact.Apis.CreatePayload)
-      }
+      await create.mutateAsync(data)
       modal.closeModal()
-      showAlert(modal.data ? 'Contact updated!' : 'Contact created!', 'success')
-    } catch (error) {
-      showAlert(error instanceof Error ? error.message : 'Something went wrong', 'error')
+      toast.success('Contact created!')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed')
     }
-  }
+  };
 
-  if (isLoading) return <Spinner />;
+  if (isLoading) return <Skeleton />;
   if (isError)   return <ErrorState message={error?.message} onRetry={refetch} />;
 
   return (
     <>
-      {alert.isVisible && <Alert type={alert.type} onClose={hideAlert}>{alert.message}</Alert>}
-      <button onClick={modal.openCreateModal}>+ New Contact</button>
       {isRefetching && <RefreshBadge />}
+
+      <Toolbar>
+        <SortSelect
+          value={search.sort}
+          onChange={(sort) => { setSearch({ sort }); resetPagination(); }}
+        />
+        <Button onClick={modal.openCreateModal}>+ New</Button>
+      </Toolbar>
+
       {list.map(c => (
-        <ContactCard
+        <ContactRow
           key={c._id}
           contact={c}
-          onEdit={() => modal.openEditModal(c)}
+          onView={() => navigate(AppRoutes.dashboard.users.detail.build({ params: { userId: c._id } }))}
           onDelete={() => remove.mutate(c._id)}
         />
       ))}
+
       <Pagination
         current={pagination.page}
         total={pagination.totalDocuments}
-        pageSize={pagination.limit}
         onChange={onPaginationChange}
       />
+
       <ContactModal
         open={modal.isOpen}
-        data={modal.data}
-        isSaving={create.isPending || update.isPending}
-        onSubmit={handleSubmit}
+        isSaving={create.isPending}
+        onSubmit={handleSave}
         onClose={modal.closeModal}
       />
     </>
@@ -1178,42 +914,18 @@ export function ContactsPage() {
 
 ## Contributing / Development
 
-### Prerequisites
-
-- Node.js ≥ 18
-- pnpm ≥ 8
-
-### Setup
-
 ```bash
 git clone https://github.com/shahtirthhh/void-snippets.git
 cd void-snippets
 pnpm install
-```
 
-### Development
+pnpm dev            # watch mode — all packages
+pnpm build          # full build
+pnpm build:react    # react package only
 
-```bash
-pnpm dev            # all packages in parallel watch mode
-pnpm build:react    # rebuild react only after changes
-```
-
-### Build
-
-```bash
-pnpm build          # all packages in dependency order
-```
-
-### Versioning & Publishing
-
-```bash
-# Bump only the changed package
+# Versioning & publishing
 pnpm --filter @void-snippets/react exec npm version minor
-
-# Publish changed package
 pnpm --filter @void-snippets/react publish --access public --no-git-checks
-
-# Publish all packages
 pnpm publish:all
 ```
 
