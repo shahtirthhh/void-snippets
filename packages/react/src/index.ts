@@ -4,7 +4,13 @@ export type {
   VSUseListReturn,
   VSUseGetReturn,
   VSResourceHooksOptions,
+  VSOptimisticHandlers,
+  VSOptimisticOperation,
 } from "./hooks/createResourceHooks";
+
+// Socket.IO hooks factory
+export { createSocketHooks } from "./socket/createSocketHooks";
+export type { VSSocketConnectionReturn } from "./socket/createSocketHooks";
 
 // General-purpose React hooks
 export { useAlertMessage } from "./hooks/useAlertMessage";
