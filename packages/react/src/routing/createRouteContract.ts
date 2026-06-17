@@ -365,7 +365,12 @@ export function createRouteContract<T extends RouteTree>(
           // 1. Resolve path params via React Router's battle-tested generatePath.
           //    Handles :param, :param?, and wildcard segments correctly.
           const pathname: string = params
-            ? generatePath(node.path, params as Record<string, string | number>)
+            ? generatePath(
+                node.path,
+                Object.fromEntries(
+                  Object.entries(params).map(([k, v]) => [k, String(v)]),
+                ),
+              )
             : node.path;
 
           // 2. Serialize search params into a query string.
