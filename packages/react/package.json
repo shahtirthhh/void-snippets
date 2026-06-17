@@ -2,7 +2,7 @@
   "name": "@void-snippets/react",
   "version": "0.6.0",
   "description": "TanStack Query resource hooks factory, Socket.IO hooks factory, type-safe routing contract, and general-purpose React hooks",
-  "homepage": "https://github.com/shahtirthhh/void-snippets",
+  "homepage": "https://void-snippets.vercel.app",
   "repository": {
     "type": "git",
     "url": "https://github.com/shahtirthhh/void-snippets.git",
@@ -21,7 +21,9 @@
       "default": "./dist/index.mjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch"

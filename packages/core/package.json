@@ -2,7 +2,7 @@
   "name": "@void-snippets/core",
   "version": "0.3.0",
   "description": "Core types and utilities for void-snippets packages",
-  "homepage": "https://github.com/shahtirthhh/void-snippets",
+  "homepage": "https://void-snippets.vercel.app",
   "repository": {
     "type": "git",
     "url": "https://github.com/shahtirthhh/void-snippets.git",
@@ -21,12 +21,18 @@
       "default": "./dist/index.mjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch"
   },
-  "keywords": ["typescript", "void-snippets", "types"],
+  "keywords": [
+    "typescript",
+    "void-snippets",
+    "types"
+  ],
   "license": "MIT",
   "devDependencies": {
     "tsup": "^8.0.0",
