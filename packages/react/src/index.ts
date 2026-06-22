@@ -16,6 +16,7 @@ export type { VSSocketConnectionReturn } from "./socket/createSocketHooks";
 export {
   createRouteContract,
   defineRoute,
+  useTypedParams,
   useTypedSearchParams,
 } from "./routing/createRouteContract";
 export type {

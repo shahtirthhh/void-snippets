@@ -1,5 +1,5 @@
 import { generatePath } from "react-router";
-import { useSearchParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 
 // ============================================================================
 // INTERNAL TYPE UTILITIES
@@ -32,6 +32,18 @@ type Prettify<T> = { [K in keyof T]: T[K] } & {};
 
 /** All named path parameters for a given route path literal. */
 type RouteParams<Path extends string> = Prettify<ExtractRouteParams<Path>>;
+
+/**
+ * Route params as they actually arrive at runtime — `useParams()` always
+ * returns strings, regardless of how `build()` types them (`string | number`).
+ * Optional path segments (`:param?`) remain optional here too.
+ *
+ *   '/inbox/conversations/:conversationId' → { conversationId: string }
+ *   '/files/:path?'                        → { path?: string }
+ */
+type StringifiedRouteParams<Path extends string> = {
+  [K in keyof RouteParams<Path>]: string;
+};
 
 /** True when the path string contains at least one named parameter. */
 type HasParams<Path extends string> =
@@ -164,24 +176,8 @@ export type RouteDefinition<
   Path extends string = string,
   Search = never,
 > = RouteMetadata & {
-  /** The absolute path string for this route. */
   readonly path: Path;
-
-  /**
-   * Phantom type anchor — carries the Search type for downstream inference.
-   * Always `undefined` at runtime. Do not read or write this directly.
-   * @internal
-   */
-  readonly _search: Search;
-
-  /**
-   * Declares typed search parameters for this route. Chain immediately after
-   * `defineRoute()`. The generic type argument is the only input — no value
-   * needs to be passed.
-   *
-   * @example
-   * defineRoute('/users').search<{ page: number; sort?: 'asc' | 'desc' }>()
-   */
+  readonly _search: Search; // phantom — @internal
   search<S>(): RouteDefinition<Path, S>;
 };
 
@@ -193,24 +189,8 @@ export type ProcessedRoute<
   Path extends string = string,
   Search = never,
 > = RouteMetadata & {
-  /** The absolute path string — use this in `createBrowserRouter`. */
   readonly path: Path;
-
-  /**
-   * Phantom type anchor — used by `useTypedSearchParams` to infer `Search`.
-   * Always `undefined` at runtime. Do not read or write this directly.
-   * @internal
-   */
-  readonly _search: Search;
-
-  /**
-   * Builds a fully qualified URL for this route.
-   *
-   * TypeScript enforces at compile time that:
-   * - `params` is provided and fully satisfied when the path has dynamic segments.
-   * - `search` matches the exact shape declared via `.search<T>()`.
-   * - No argument is needed for routes with neither params nor required search.
-   */
+  readonly _search: Search; // phantom — @internal
   readonly build: BuildFn<Path, Search>;
 };
 
@@ -232,11 +212,6 @@ type ProcessedTree<T> = {
 // RUNTIME: TYPE GUARD
 // ============================================================================
 
-/**
- * Differentiates a RouteDefinition leaf from a plain route group object.
- * Checks for the three properties that only `defineRoute()` produces:
- * `path` (string), `_search` (phantom), and `search` (type-setting method).
- */
 function isRouteDefinition(node: unknown): node is RouteDefinition {
   if (node === null || typeof node !== "object") return false;
   const n = node as Record<string, unknown>;
@@ -257,23 +232,17 @@ function isRouteDefinition(node: unknown): node is RouteDefinition {
  * The second argument is purely metadata — permissions, breadcrumbs, titles.
  * Chain `.search<SearchType>()` to declare typed search parameters for the route.
  *
- * **Use absolute paths.** Concatenating parent/child paths via template literals
- * causes TypeScript server slowdowns on large apps. Be explicit.
+ * Use absolute paths. Concatenating parent/child paths via template literals
+ * causes TypeScript server slowdowns on large apps.
  *
  * @example
- * // Plain route — no params, no search
  * defineRoute('/dashboard', { breadcrumb: 'Home', title: 'Dashboard' })
  *
- * // Route with typed search params
  * defineRoute('/users', { permissions: ['ADMIN'] })
  *   .search<{ page: number; sort?: 'asc' | 'desc' }>()
  *
- * // Route with path params and optional search
  * defineRoute('/users/:userId', { breadcrumb: 'User Detail' })
  *   .search<{ tab?: 'profile' | 'settings' }>()
- *
- * // Route with path params, no search
- * defineRoute('/users/:userId/posts/:postId')
  */
 export function defineRoute<Path extends string>(
   path: Path,
@@ -282,13 +251,8 @@ export function defineRoute<Path extends string>(
   const definition: RouteDefinition<Path, never> = {
     ...config,
     path,
-    // Phantom anchor — undefined at runtime, typed as `never` for the base definition.
-    // The search<S>() method changes this to `S` at the TypeScript level only.
     _search: undefined as unknown as never,
     search<S>(): RouteDefinition<Path, S> {
-      // Pure type-level operation. The runtime object is returned unchanged.
-      // TypeScript sees the return type as RouteDefinition<Path, S> and uses
-      // that for all downstream generic inference.
       return definition as unknown as RouteDefinition<Path, S>;
     },
   };
@@ -302,33 +266,18 @@ export function defineRoute<Path extends string>(
 /**
  * Processes a tree of `defineRoute()` definitions into a fully typed contract.
  *
- * Every route leaf gains a `build()` function whose signature is automatically
- * conditioned on the presence of path params and search params. Nested groups
- * are preserved as plain objects. All metadata (`path`, `permissions`,
- * `breadcrumb`, `title`, `meta`) flows through to the output unchanged.
+ * Every route leaf gains a type-safe `build()` function. Nested groups are
+ * preserved as plain objects. All metadata flows through unchanged.
  *
- * Call once at module level and export. Import `AppRoutes` wherever you need
- * to build a URL, wire up the router, or access route metadata.
+ * Call once at module level and export as `AppRoutes`.
  *
  * @example
- * // routes.ts
  * export const AppRoutes = createRouteContract({
  *   auth: {
- *     login:    defineRoute('/auth/login').search<{ redirect?: string }>(),
- *     register: defineRoute('/auth/register'),
+ *     login: defineRoute('/auth/login').search<{ redirect?: string }>(),
  *   },
- *   dashboard: {
- *     root: defineRoute('/dashboard', { breadcrumb: 'Home', title: 'Dashboard' }),
- *     users: {
- *       list: defineRoute('/dashboard/users', {
- *         permissions: ['ADMIN'],
- *         breadcrumb:  'Users',
- *       }).search<{ page: number; sort?: 'asc' | 'desc' }>(),
- *       detail: defineRoute('/dashboard/users/:userId', {
- *         permissions: ['ADMIN'],
- *         breadcrumb:  'User Detail',
- *       }).search<{ tab?: 'profile' | 'settings' }>(),
- *     },
+ *   inbox: {
+ *     conversation: defineRoute('/inbox/conversations/:conversationId'),
  *   },
  * });
  */
@@ -341,8 +290,6 @@ export function createRouteContract<T extends RouteTree>(
     const node = tree[key];
 
     if (isRouteDefinition(node)) {
-      // Strip the phantom _search and the type-only search() method.
-      // They exist only for TypeScript — the processed node doesn't expose them.
       const {
         _search: _phantom,
         search: _searchFn,
@@ -351,7 +298,6 @@ export function createRouteContract<T extends RouteTree>(
 
       result[key] = {
         ...metadata,
-        // Preserve the phantom anchor on the ProcessedRoute for useTypedSearchParams.
         _search: undefined as unknown as never,
 
         build(
@@ -362,8 +308,6 @@ export function createRouteContract<T extends RouteTree>(
         ): string {
           const { params, search } = options;
 
-          // 1. Resolve path params via React Router's battle-tested generatePath.
-          //    Handles :param, :param?, and wildcard segments correctly.
           const pathname: string = params
             ? generatePath(
                 node.path,
@@ -373,13 +317,10 @@ export function createRouteContract<T extends RouteTree>(
               )
             : node.path;
 
-          // 2. Serialize search params into a query string.
-          //    undefined and null values are silently dropped.
           if (search) {
             const defined = Object.entries(search).filter(
               ([, v]) => v !== undefined && v !== null,
             );
-
             if (defined.length > 0) {
               const qs = new URLSearchParams(
                 defined.map(([k, v]) => [k, String(v)]),
@@ -392,8 +333,6 @@ export function createRouteContract<T extends RouteTree>(
         },
       };
     } else {
-      // Recurse into nested route groups — they are plain objects without
-      // `path`, `_search`, or `search`, so isRouteDefinition returns false.
       result[key] = createRouteContract(node as RouteTree);
     }
   }
@@ -402,75 +341,90 @@ export function createRouteContract<T extends RouteTree>(
 }
 
 // ============================================================================
+// RUNTIME: useTypedParams
+// ============================================================================
+
+/**
+ * Returns the current URL path parameters typed to the `:segments` declared
+ * in the route's path string. TypeScript extracts the param names directly
+ * from the path literal — no manual type annotation needed.
+ *
+ * This is the path-param counterpart to `useTypedSearchParams`.
+ *
+ * - `useTypedParams`       → reads `:conversationId` from the path
+ * - `useTypedSearchParams` → reads `?page=1&sort=asc` from the query string
+ *
+ * All values are `string` at runtime (React Router's `useParams` always
+ * returns strings). Use `stringToId<T>()` from `@void-snippets/core` to
+ * convert to a branded ID.
+ *
+ * @example
+ * // Route: defineRoute('/inbox/conversations/:conversationId')
+ * const { conversationId } = useTypedParams(AppRoutes.inbox.conversation);
+ * // conversationId: string — TypeScript inferred from the path, not guessed
+ *
+ * // Cast to a branded ID immediately after reading
+ * const id = stringToId<Conversation.Id>(conversationId);
+ *
+ * // Works with multiple params too
+ * // Route: defineRoute('/orgs/:orgId/projects/:projectId')
+ * const { orgId, projectId } = useTypedParams(AppRoutes.orgs.project);
+ */
+export function useTypedParams<P extends string, S>(
+  // Only used for TypeScript to infer P from ProcessedRoute<P, S>.
+  // The route value itself is never read at runtime.
+  _route: ProcessedRoute<P, S>,
+): StringifiedRouteParams<P> {
+  const params = useParams();
+  // useParams() returns Readonly<Record<string, string | undefined>>.
+  // We cast to StringifiedRouteParams<P> — the param names are guaranteed
+  // correct because the route and the router config share the same path string.
+  return params as unknown as StringifiedRouteParams<P>;
+}
+
+// ============================================================================
 // RUNTIME: useTypedSearchParams
 // ============================================================================
 
 /**
  * Returns the current URL search params typed to the shape declared on the
- * route, plus a type-safe setter and a clear function.
+ * route via `.search<T>()`, plus a type-safe setter and clear function.
  *
- * Pass any processed route that was created with `.search<T>()`. TypeScript
- * infers `T` automatically — no generics needed at the call site.
+ * `setSearch` **merges** — pass only the keys you want to change.
+ * Set a key to `undefined` to remove it from the URL.
  *
- * **`setSearch` merges** — it does not replace the entire query string.
- * Pass only the keys you want to change; everything else is preserved.
- * Set a key to `undefined` or `null` to remove it from the URL.
- *
- * ⚠️  **Runtime coercion note:** React Router's `useSearchParams` returns all
- * values as strings. If you declare `page: number`, `search.page` will be
- * the string `"1"` at runtime even though TypeScript types it as `number`.
- * Coerce where needed: `Number(search.page)`. This is a deliberate trade-off
- * that avoids requiring a runtime schema library.
+ * ⚠️ All values are strings at runtime (React Router returns everything from
+ * the URL as a string). Coerce numeric types explicitly: `Number(search.page ?? 1)`.
  *
  * @example
- * // Inside the /dashboard/users page component
  * const { search, setSearch, clearSearch } =
- *   useTypedSearchParams(AppRoutes.dashboard.users.list);
+ *   useTypedSearchParams(AppRoutes.inbox.list);
  *
- * // search.page is typed as `number | undefined`
- * // but is a string at runtime — coerce explicitly:
- * const page = Number(search.page ?? 1);
- *
- * setSearch({ page: 2 })              // keeps sort, q; updates page
- * setSearch({ page: 1, sort: 'asc' }) // updates page and sort; keeps q
- * setSearch({ sort: undefined })      // removes sort from the URL
- * clearSearch()                        // wipes all search params
+ * setSearch({ page: 2 })         // updates page, keeps everything else
+ * setSearch({ filter: undefined }) // removes filter from the URL
+ * clearSearch()                   // wipes all search params
  */
 export function useTypedSearchParams<P extends string, S>(
-  // Only used for TypeScript to infer S from ProcessedRoute<P, S>.
-  // The runtime value is not read — the hook uses useSearchParams directly.
   _route: ProcessedRoute<P, S>,
 ): {
-  /** Current search params, typed as a partial of the declared search shape. */
   readonly search: Readonly<Partial<S>>;
-  /**
-   * Merges the given partial update into the current search params and
-   * pushes a new URL entry. Set a key to `undefined` to remove it.
-   */
   setSearch: (update: Partial<S>) => void;
-  /** Removes all search parameters from the URL. */
   clearSearch: () => void;
 } {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Cast URLSearchParams entries to the declared type.
-  // Values are strings at runtime — documented in the JSDoc above.
   const search = Object.fromEntries(searchParams.entries()) as Partial<S>;
 
   function setSearch(update: Partial<S>): void {
     setSearchParams((prev) => {
       const next: Record<string, string> = Object.fromEntries(prev.entries());
-
-      for (const [k, v] of Object.entries(
-        update as Record<string, unknown>,
-      )) {
+      for (const [k, v] of Object.entries(update as Record<string, unknown>)) {
         if (v === undefined || v === null) {
           delete next[k];
         } else {
           next[k] = String(v);
         }
       }
-
       return next;
     });
   }

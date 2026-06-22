@@ -56,6 +56,7 @@ Every CRUD feature you build ends up with roughly the same boilerplate: fetch th
   - [createRouteContract](#createroutecontract)
     - [defineRoute](#defineroute)
     - [build()](#build)
+    - [useTypedParams](#usetypedparams)
     - [useTypedSearchParams](#usetypedsearchparams)
   - [useAlertMessage](#usealertmessage)
   - [useAsyncState](#useasyncstate)
@@ -584,6 +585,7 @@ import {
   createSocketHooks,
   createRouteContract,
   defineRoute,
+  useTypedParams,
   useTypedSearchParams,
   useAlertMessage,
   useAsyncState,
@@ -1290,7 +1292,7 @@ function AppShell() {
 
 ### `createRouteContract`
 
-**What it does:** Converts a tree of `defineRoute()` definitions into a typed route contract. Every route gets a `build()` function that TypeScript checks at compile time — missing path params, wrong types in search params, forgotten required fields are all caught before the code runs.
+**What it does:** Converts a tree of `defineRoute()` definitions into a typed route contract. Every route gets a `build()` function that TypeScript checks at compile time — missing path params, wrong types in search params, forgotten required fields are all caught before the code runs. Pair it with `useTypedParams` and `useTypedSearchParams` to read the current URL with the same types.
 
 Requires `react-router ≥7.0.0`.
 
@@ -1502,6 +1504,69 @@ navigate(
 >
   Log in
 </Link>;
+```
+
+---
+
+#### `useTypedParams`
+
+**What it does:** Returns the current URL path parameters typed to the `:segments` declared in the route's path string. TypeScript extracts the parameter names directly from the path literal — no manual type annotation needed. This is the path-parameter counterpart to `useTypedSearchParams`.
+
+| Hook                   | Reads from                         |
+| ---------------------- | ---------------------------------- |
+| `useTypedParams`       | Path segments — `:userId`          |
+| `useTypedSearchParams` | Query string — `?page=1&sort=asc`  |
+
+**Signature:**
+
+```ts
+function useTypedParams<P extends string, S>(
+  route: ProcessedRoute<P, S>,
+): StringifiedRouteParams<P>;
+```
+
+**Input:**
+
+| Parameter | Type                   | Description                                                                               |
+| --------- | ---------------------- | ----------------------------------------------------------------------------------------- |
+| `route`   | `ProcessedRoute<P, S>` | Any route from your `AppRoutes`. TypeScript infers `P` automatically — no generic needed. |
+
+**Output:** An object whose keys match the `:param` names in the route path. Required segments are always `string`; optional segments (`:param?`) are `string | undefined`.
+
+> ⚠️ **All path param values are strings at runtime.** React Router's `useParams` always returns strings. Use `stringToId<T>()` from `@void-snippets/core` to convert to a branded ID at the boundary before passing to your API layer.
+
+**Example:**
+
+```tsx
+// This component lives at /dashboard/users/:userId
+// The route is: defineRoute('/dashboard/users/:userId')
+import { useTypedParams } from "@void-snippets/react";
+import { stringToId } from "@void-snippets/core";
+import { AppRoutes } from "@/routes";
+
+function UserDetailPage() {
+  // TypeScript strictly knows that `userId` exists and is a string.
+  // It will throw a compile error if you try to destructure `{ id }` or `{ user_id }`.
+  const { userId } = useTypedParams(AppRoutes.dashboard.users.detail);
+
+  // Cast safely at the boundary before passing to your API layer
+  const validId = stringToId<User.Id>(userId);
+
+  const { item: user, isLoading, isError } = userHooks.useGet(validId);
+
+  if (isLoading) return <Spinner />;
+  if (isError) return <ErrorState />;
+
+  return (
+    <div>
+      <h1>Viewing User {user?.name}</h1>
+      <div className="details">
+        <p>Email: {user?.email}</p>
+        <p>Role: {user?.role}</p>
+      </div>
+    </div>
+  );
+}
 ```
 
 ---
@@ -2224,6 +2289,38 @@ export function ContactsPage() {
 }
 ```
 
+**Step 6 — The detail page**
+
+```tsx
+// ContactDetailPage.tsx
+import { stringToId } from "@void-snippets/core";
+import { useTypedParams } from "@void-snippets/react";
+import { contactHooks } from "./contacts.hooks";
+import { AppRoutes } from "@/routes";
+
+export function ContactDetailPage() {
+  const { contactId } = useTypedParams(AppRoutes.contacts.detail);
+  const id = stringToId<Contact.Id>(contactId);
+
+  const { item: contact, isLoading, isError, error } = contactHooks.useGet(id);
+
+  if (isLoading) return <DetailSkeleton />;
+  if (isError) return <ErrorState message={error?.message} />;
+
+  return (
+    <div>
+      <PageHeader title={contact?.name ?? "Contact"} />
+      <dl>
+        <dt>Email</dt>
+        <dd>{contact?.email}</dd>
+        <dt>Phone</dt>
+        <dd>{contact?.phone}</dd>
+      </dl>
+    </div>
+  );
+}
+```
+
 ---
 
 ## Build and Publish
@@ -2250,7 +2347,7 @@ void-snippets/
 │   └── react/src/
 │       ├── hooks/     — createResourceHooks, useAlertMessage, useAsyncState, useCallTimer, useModal, usePagination
 │       ├── socket/    — createSocketHooks
-│       └── routing/   — createRouteContract, defineRoute, useTypedSearchParams
+│       └── routing/   — createRouteContract, defineRoute, useTypedParams, useTypedSearchParams
 └── pnpm-workspace.yaml
 ```
 
