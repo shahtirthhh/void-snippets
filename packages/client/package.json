@@ -1,6 +1,6 @@
 {
   "name": "@void-snippets/client",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Framework-agnostic HTTP resource service for TypeScript projects",
   "homepage": "https://void-snippets.vercel.app",
   "repository": {
